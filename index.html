@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem KIR Ruangan & Mutasi Aset ALKES</title>
-
+    <title>SIMA-RSUD | Sistem Informasi Aset & Kalibrasi Rumah Sakit</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,1311 +12,1500 @@
                 extend: {
                     colors: {
                         brand: {
-                            50: '#f0fdfa',
-                            100: '#ccfbf1',
-                            500: '#14b8a6',
-                            600: '#0d9488',
-                            700: '#0f766e',
-                            800: '#115e59',
-                            900: '#134e4a',
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#0c4a6e',
                         }
                     }
                 }
             }
         }
     </script>
-
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome Icons CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Vue.js 3 CDN -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Supabase JS Client v2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SheetJS for Excel Export -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             body { background: white; color: black; }
-            .print-card { border: none !important; shadow: none !important; padding: 0 !important; }
+            .shadow-sm, .shadow, .shadow-lg { box-shadow: none !important; }
         }
-        .print-only { display: none; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
 
-    <div id="app" class="flex flex-col flex-1">
-
-        <!-- HEADER & NAVIGATION -->
-        <header class="bg-brand-900 text-white shadow-md sticky top-0 z-30 no-print">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-16">
-                    
-                    <!-- Logo & Title -->
-                    <div class="flex items-center space-x-3 cursor-pointer" @click="currentTab = 'dashboard'">
-                        <div class="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center font-bold text-xl text-white shadow-inner">
-                            <i class="fa-solid font-bold fa-notes-medical"></i>
-                        </div>
-                        <div>
-                            <h1 class="font-bold text-lg leading-tight">SIM-KIR ALKES</h1>
-                            <p class="text-xs text-brand-100">Kartu Inventaris Ruangan & Mutasi Aset</p>
-                        </div>
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Hospital Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-brand-500 flex items-center justify-center text-white shadow-lg">
+                        <i class="fa-solid font-bold fa-hospital-user text-xl"></i>
                     </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                            SIMA-RSUD
+                            <span class="text-xs bg-brand-500/30 text-brand-300 font-medium px-2 py-0.5 rounded-full border border-brand-400/30">v2.5</span>
+                        </h1>
+                        <p class="text-xs text-slate-400 font-medium">Sistem Aset & Kalibrasi Rumah Sakit Umum Daerah</p>
+                    </div>
+                </div>
 
-                    <!-- Connection Status Badge -->
-                    <div class="hidden md:flex items-center space-x-2 text-xs bg-brand-800/80 px-3 py-1.5 rounded-full border border-brand-700">
-                        <span class="w-2 h-2 rounded-full" :class="isSupabaseConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'"></span>
-                        <span>{{ isSupabaseConnected ? 'Terhubung Supabase' : 'Mode Demo / Lokal' }}</span>
-                        <button @click="showConfigModal = true" class="ml-2 underline text-brand-100 hover:text-white">
-                            <i class="fa-solid fa-gear"></i>
+                <!-- Navigation Links & Status Badge -->
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Calibration Alert Status Pill -->
+                    <button onclick="switchTab('notifications')" class="relative flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition">
+                        <i class="fa-solid fa-bell text-amber-400 animate-bounce"></i>
+                        <span class="hidden md:inline">Notifikasi Kalibrasi</span>
+                        <span id="badge-alert-count" class="px-2 py-0.5 text-xs rounded-full bg-red-600 text-white font-bold">0</span>
+                    </button>
+
+                    <!-- Database Settings Modal Button -->
+                    <button onclick="openConfigModal()" title="Konfigurasi Supabase" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                        <i class="fa-solid fa-database text-teal-400"></i>
+                    </button>
+
+                    <!-- GitHub Deployment Help Button -->
+                    <button onclick="openGithubHelpModal()" title="Panduan Hosting GitHub" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+                        <i class="fa-brands fa-github text-slate-200"></i>
+                    </button>
+
+                    <div class="h-6 w-px bg-slate-700 mx-1"></div>
+
+                    <!-- Auth Button Status -->
+                    <div id="auth-button-container">
+                        <button onclick="openLoginModal()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span>Login Admin</span>
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
 
-                    <!-- User Actions / Login Info -->
-                    <div class="flex items-center space-x-3">
-                        <div v-if="isAdmin" class="flex items-center space-x-2 sm:space-x-3">
-                            <span class="hidden sm:inline-block text-xs bg-brand-700 px-2.5 py-1 rounded-md border border-brand-600 font-medium">
-                                <i class="fa-solid fa-user-shield mr-1"></i> {{ loggedInUser.username }}
-                            </span>
-                            <button @click="showChangePasswordModal = true" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow flex items-center space-x-1" title="Ubah Password Admin">
-                                <i class="fa-solid fa-key"></i>
-                                <span class="hidden md:inline">Ganti Password</span>
-                            </button>
-                            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
-                                <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar
-                            </button>
-                        </div>
-                        <div v-else>
-                            <button @click="showLoginModal = true" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow flex items-center space-x-1">
-                                <i class="fa-solid fa-lock text-xs"></i>
-                                <span>Login Admin</span>
-                            </button>
-                        </div>
+        <!-- Sub-Navigation Tabs Bar -->
+        <nav class="bg-slate-800 border-t border-slate-700/60 px-4 sm:px-8">
+            <div class="max-w-7xl mx-auto flex space-x-1 sm:space-x-4 overflow-x-auto custom-scrollbar text-xs sm:text-sm font-medium py-2">
+                <button id="tab-btn-dashboard" onclick="switchTab('dashboard')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap active-tab text-white bg-brand-600">
+                    <i class="fa-solid fa-chart-pie"></i> Laporan & Dashboard
+                </button>
+                <button id="tab-btn-assets" onclick="switchTab('assets')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-boxes-stacked"></i> Laporan Daftar Aset
+                </button>
+                <button id="tab-btn-notifications" onclick="switchTab('notifications')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Monitoring Kalibrasi
+                </button>
+                <button id="tab-btn-admin" onclick="switchTab('admin')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap text-amber-300 hover:text-amber-200">
+                    <i class="fa-solid fa-sliders"></i> Kelola Data (Admin)
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Supabase Connection Banner Warning (If fallback mode is active) -->
+    <div id="db-warning-banner" class="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-amber-700 text-xs sm:text-sm text-center font-medium flex items-center justify-center gap-2 no-print">
+        <i class="fa-solid fa-circle-info text-amber-600"></i>
+        <span>Mode Demonstrasi (Data disimpan di browser local storage). Hubungkan ke Supabase database milik RSUD Anda untuk sinkronisasi live.</span>
+        <button onclick="openConfigModal()" class="underline font-bold hover:text-amber-900 ml-2">Atur Supabase</button>
+    </div>
+
+    <!-- Main Dynamic View Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- TAB 1: DASHBOARD & REPORT SUMMARY (PUBLIC VIEW) -->
+        <section id="view-dashboard" class="space-y-6">
+            <!-- Header Title -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-brand-600"></i> Laporan Ringkasan Aset & Kalibrasi RSUD
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-0.5">Monitoring ketersediaan alat medis, status kelaikan operasional, dan kepatuhan kalibrasi berkala.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="window.print()" class="px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-2 border border-slate-300 shadow-sm">
+                        <i class="fa-solid fa-print"></i> Cetak Laporan
+                    </button>
+                    <button onclick="exportDataCSV()" class="px-3.5 py-2 text-xs sm:text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-file-excel"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Metric Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Total Assets Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Total Aset Tercatat</p>
+                        <h3 id="stat-total-assets" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3>
+                        <p class="text-xs text-slate-500 mt-1">Seluruh unit ruangan</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                </div>
+
+                <!-- Safe Calibration Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Kalibrasi Aman</p>
+                        <h3 id="stat-safe-calibration" class="text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
+                        <p class="text-xs text-emerald-600 font-medium mt-1">Masa berlaku > 30 hari</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+
+                <!-- Calibration Due Soon Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Segera Kalibrasi</p>
+                        <h3 id="stat-due-soon-calibration" class="text-3xl font-extrabold text-amber-500 mt-1">0</h3>
+                        <p class="text-xs text-amber-600 font-medium mt-1">Jatuh tempo &le; 30 hari</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                </div>
+
+                <!-- Overdue Calibration Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Expired / Kadaluarsa</p>
+                        <h3 id="stat-expired-calibration" class="text-3xl font-extrabold text-rose-600 mt-1">0</h3>
+                        <p class="text-xs text-rose-600 font-medium mt-1">Perlu tindakan cepat</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Main Navigation Links -->
-            <nav class="bg-brand-800 border-t border-brand-700/60 overflow-x-auto no-scrollbar">
-                <div class="max-w-7xl mx-auto px-4 flex space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium">
-                    <!-- Public Menu -->
-                    <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2">
-                        <i class="fa-solid fa-chart-pie"></i><span>Dashboard Utama</span>
-                    </button>
-                    <button @click="currentTab = 'public-kir'" :class="navClass('public-kir')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2">
-                        <i class="fa-solid fa-clipboard-list"></i><span>Laporan KIR Ruangan</span>
-                    </button>
-                    <button @click="currentTab = 'jadwal-kir'" :class="navClass('jadwal-kir')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2">
-                        <i class="fa-solid fa-calendar-check"></i><span>Jadwal KIR ALKES</span>
-                    </button>
-
-                    <!-- Admin Only Menu -->
-                    <template v-if="isAdmin">
-                        <span class="py-3 px-1 text-brand-500/50">|</span>
-                        <button @click="currentTab = 'data-aset'" :class="navClass('data-aset')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2 text-amber-200 hover:text-white">
-                            <i class="fa-solid fa-boxes-stacked"></i><span>Kelola Aset</span>
-                        </button>
-                        <button @click="currentTab = 'mutasi'" :class="navClass('mutasi')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2 text-amber-200 hover:text-white">
-                            <i class="fa-solid fa-arrow-right-arrow-left"></i><span>Mutasi Ruangan</span>
-                        </button>
-                        <button @click="currentTab = 'data-ruangan'" :class="navClass('data-ruangan')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2 text-amber-200 hover:text-white">
-                            <i class="fa-solid fa-hospital-user"></i><span>Data Ruangan</span>
-                        </button>
-                    </template>
+            <!-- Dashboard Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Calibration Status Breakdown Chart -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-slate-800">Status Kepatuhan Kalibrasi Aset</h3>
+                        <span class="text-xs text-slate-400 font-medium">Persentase Kelaikan</span>
+                    </div>
+                    <div class="relative h-64 flex justify-center items-center">
+                        <canvas id="chartStatusKalibrasi"></canvas>
+                    </div>
                 </div>
-            </nav>
-        </header>
 
-        <!-- MAIN CONTENT AREA -->
-        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+                <!-- Category Breakdown Chart -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-slate-800">Jumlah Aset Per Kategori</h3>
+                        <span class="text-xs text-slate-400 font-medium">Distribusi Aset RSUD</span>
+                    </div>
+                    <div class="relative h-64 flex justify-center items-center">
+                        <canvas id="chartKategoriAset"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-            <!-- TAB 1: DASHBOARD UTAMA (PUBLIC & SUMMARY) -->
-            <section v-if="currentTab === 'dashboard'" class="space-y-6">
-                <!-- Banner Welcome -->
-                <div class="bg-gradient-to-r from-brand-700 to-brand-900 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+        <!-- TAB 2: PUBLIC ASSET REPORT LIST TABLE -->
+        <section id="view-assets" class="space-y-6 hidden">
+            <!-- Table Header & Controls -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h2 class="text-2xl font-bold mb-1">Sistem Informasi Kartu Inventaris Ruangan (KIR)</h2>
-                        <p class="text-brand-100 text-sm max-w-2xl">
-                            Monitoring ketersediaan, penjadwalan pemeliharaan berkala, serta rekapitulasi kondisi Alat Kesehatan (ALKES) di setiap unit dan ruangan rumah sakit/puskesmas.
-                        </p>
+                        <h2 class="text-xl font-bold text-slate-900">Daftar Laporan Aset RSUD</h2>
+                        <p class="text-sm text-slate-500">Transparansi data inventaris dan status operasional rumah sakit.</p>
                     </div>
-                    <div class="flex gap-2">
-                        <button @click="currentTab = 'public-kir'" class="bg-white text-brand-900 font-semibold text-xs px-4 py-2.5 rounded-xl shadow hover:bg-brand-50 transition">
-                            <i class="fa-solid fa-eye mr-1"></i> Lihat Laporan KIR
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportDataCSV()" class="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i> Unduh Laporan (CSV)
                         </button>
                     </div>
                 </div>
 
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs text-slate-500 font-medium">Total Ruangan</p>
-                            <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ ruanganList.length }}</h3>
-                        </div>
-                        <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-hospital"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs text-slate-500 font-medium">Total Aset ALKES</p>
-                            <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ asetList.length }}</h3>
-                        </div>
-                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-stethoscope"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs text-slate-500 font-medium">Kondisi Baik</p>
-                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">{{ countByKondisi('Baik') }}</h3>
-                        </div>
-                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-circle-check"></i>
-                        </div>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p class="text-xs text-slate-500 font-medium">Perlu Perbaikan / Rusak</p>
-                            <h3 class="text-2xl font-bold text-rose-600 mt-1">{{ countByKondisi('Rusak Ringan') + countByKondisi('Rusak Berat') }}</h3>
-                        </div>
-                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Activities & Next KIR Schedules -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Jadwal KIR Mendatang -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold text-slate-800 text-sm flex items-center">
-                                <i class="fa-solid fa-calendar-days text-brand-600 mr-2"></i> Agenda KIR ALKES Mendatang
-                            </h3>
-                            <button @click="currentTab = 'jadwal-kir'" class="text-xs text-brand-600 hover:underline font-semibold">Lihat Semua</button>
-                        </div>
-                        <div class="space-y-3">
-                            <div v-for="j in upcomingJadwal" :key="j.id" class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-semibold text-xs text-slate-800">{{ getAsetNama(j.aset_id) }}</h4>
-                                    <p class="text-[11px] text-slate-500">Ruangan: {{ getRuanganNama(j.ruangan_id) }} • Petugas: {{ j.petugas }}</p>
-                                </div>
-                                <div class="text-right">
-                                    <span class="inline-block px-2 py-1 text-[10px] font-bold rounded-md" :class="statusJadwalBadge(j.status)">
-                                        {{ j.status }}
-                                    </span>
-                                    <p class="text-[10px] text-slate-400 mt-1">{{ formatDate(j.tanggal_jadwal) }}</p>
-                                </div>
-                            </div>
-                            <div v-if="upcomingJadwal.length === 0" class="text-center py-6 text-slate-400 text-xs">
-                                Tidak ada agenda KIR dalam waktu dekat.
-                            </div>
-                        </div>
+                <!-- Search and Filter Bar -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                        <input type="text" id="public-search" oninput="renderPublicAssetTable()" placeholder="Cari Nama / Kode Aset / Merk..." class="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
 
-                    <!-- Histori Mutasi Terakhir -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-bold text-slate-800 text-sm flex items-center">
-                                <i class="fa-solid fa-clock-rotate-left text-brand-600 mr-2"></i> Mutasi Barang Terakhir
-                            </h3>
-                            <button v-if="isAdmin" @click="currentTab = 'mutasi'" class="text-xs text-brand-600 hover:underline font-semibold">Kelola Mutasi</button>
-                        </div>
-                        <div class="space-y-3">
-                            <div v-for="m in recentMutasi" :key="m.id" class="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="font-semibold text-slate-800">{{ getAsetNama(m.aset_id) }}</span>
-                                    <span class="text-slate-400 text-[10px]">{{ formatDate(m.tanggal_mutasi) }}</span>
-                                </div>
-                                <div class="flex items-center text-[11px] text-slate-600 space-x-2">
-                                    <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">{{ getRuanganNama(m.ruangan_asal_id) }}</span>
-                                    <i class="fa-solid fa-arrow-right text-slate-400"></i>
-                                    <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">{{ getRuanganNama(m.ruangan_tujuan_id) }}</span>
-                                </div>
-                            </div>
-                            <div v-if="recentMutasi.length === 0" class="text-center py-6 text-slate-400 text-xs">
-                                Belum ada riwayat mutasi.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 2: LAPORAN KIR RUANGAN (PUBLIC & PRINTABLE) -->
-            <section v-if="currentTab === 'public-kir'" class="space-y-6">
-                <!-- Filter Bar -->
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-md-center gap-4 no-print">
-                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                        <label class="text-xs font-bold text-slate-600 whitespace-nowrap">Pilih Ruangan:</label>
-                        <select v-model="selectedRuanganFilter" class="w-full sm:w-64 bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-brand-500 focus:border-brand-500">
-                            <option value="">-- Semua Ruangan --</option>
-                            <option v-for="r in ruanganList" :key="r.id" :value="r.id">{{ r.nama_ruangan }} ({{ r.kode_ruangan }})</option>
+                    <!-- Category Filter -->
+                    <div>
+                        <select id="public-filter-category" onchange="renderPublicAssetTable()" class="w-full py-2 px-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">Semua Kategori</option>
+                            <option value="Medis">Alat Medis Utama</option>
+                            <option value="Laboratorium">Laboratorium</option>
+                            <option value="Radiologi">Radiologi</option>
+                            <option value="Keperawatan">Keperawatan / Bangsal</option>
+                            <option value="Non-Medis">Non-Medis & Sarpras</option>
                         </select>
                     </div>
 
-                    <div class="flex items-center space-x-2">
-                        <button @click="printKIR" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl font-medium shadow flex items-center space-x-2">
-                            <i class="fa-solid fa-print"></i><span>Cetak KIR</span>
-                        </button>
-                        <button @click="exportKIRExcel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl font-medium shadow flex items-center space-x-2">
-                            <i class="fa-solid fa-file-excel"></i><span>Ekspor Excel</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- KIR Print Container -->
-                <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm print-card">
-                    <!-- Print Header -->
-                    <div class="border-b-2 border-slate-800 pb-4 mb-6 text-center">
-                        <h2 class="text-xl font-bold uppercase tracking-wide text-slate-900">KARTU INVENTARIS RUANGAN (KIR)</h2>
-                        <p class="text-xs text-slate-600 mt-1">Daftar Inventaris Alat Kesehatan & Aset Ruangan</p>
-                        <div class="mt-4 grid grid-cols-2 text-left text-xs text-slate-700">
-                            <div>
-                                <p><strong>Ruangan:</strong> {{ selectedRuanganObj ? selectedRuanganObj.nama_ruangan : 'Semua Ruangan' }}</p>
-                                <p><strong>Kode Ruangan:</strong> {{ selectedRuanganObj ? selectedRuanganObj.kode_ruangan : '-' }}</p>
-                            </div>
-                            <div class="text-right">
-                                <p><strong>Lokasi Gedung:</strong> {{ selectedRuanganObj ? selectedRuanganObj.lokasi_gedung : '-' }}</p>
-                                <p><strong>Penanggung Jawab:</strong> {{ selectedRuanganObj ? selectedRuanganObj.penanggung_jawab : '-' }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Table KIR -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-y border-slate-300">
-                                    <th class="p-3 text-center border-r">No</th>
-                                    <th class="p-3 border-r">Kode Aset / NUP</th>
-                                    <th class="p-3 border-r">Nama Barang / ALKES</th>
-                                    <th class="p-3 border-r">Merk / Tipe</th>
-                                    <th class="p-3 border-r">No. Seri</th>
-                                    <th class="p-3 text-center border-r">Th. Perolehan</th>
-                                    <th class="p-3 text-center border-r">Kondisi</th>
-                                    <th class="p-3">Ruangan</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200">
-                                <tr v-for="(item, idx) in filteredAsetForKIR" :key="item.id" class="hover:bg-slate-50">
-                                    <td class="p-3 text-center border-r font-medium text-slate-500">{{ idx + 1 }}</td>
-                                    <td class="p-3 border-r font-mono font-semibold text-slate-800">{{ item.kode_aset }}</td>
-                                    <td class="p-3 border-r font-medium text-slate-900">{{ item.nama_barang }}</td>
-                                    <td class="p-3 border-r text-slate-600">{{ item.merk_tipe || '-' }}</td>
-                                    <td class="p-3 border-r text-slate-600 font-mono">{{ item.no_seri || '-' }}</td>
-                                    <td class="p-3 text-center border-r text-slate-700">{{ item.tahun_perolehan }}</td>
-                                    <td class="p-3 text-center border-r">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="kondisiBadgeClass(item.kondisi)">
-                                            {{ item.kondisi }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-slate-700">{{ getRuanganNama(item.ruangan_id) }}</td>
-                                </tr>
-                                <tr v-if="filteredAsetForKIR.length === 0">
-                                    <td colspan="8" class="p-8 text-center text-slate-400 italic">Tidak ada data aset untuk ruangan yang dipilih.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Signature Area for Official Document -->
-                    <div class="mt-12 grid grid-cols-2 text-center text-xs text-slate-800">
-                        <div>
-                            <p class="mb-16">Mengetahui,<br><strong>Pengelola Barang / Aset</strong></p>
-                            <p class="font-bold underline">( ___________________________ )</p>
-                            <p class="text-[10px] text-slate-500">NIP. .................................................</p>
-                        </div>
-                        <div>
-                            <p class="mb-16">Penanggung Jawab Ruangan,<br><strong>{{ selectedRuanganObj ? selectedRuanganObj.nama_ruangan : 'Ka. Ruangan' }}</strong></p>
-                            <p class="font-bold underline">( {{ selectedRuanganObj ? selectedRuanganObj.penanggung_jawab : '___________________________' }} )</p>
-                            <p class="text-[10px] text-slate-500">NIP. .................................................</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 3: JADWAL KIR ALKES -->
-            <section v-if="currentTab === 'jadwal-kir'" class="space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <!-- Calibration Filter -->
                     <div>
-                        <h2 class="text-xl font-bold text-slate-800">Jadwal Pemeliharaan & KIR ALKES</h2>
-                        <p class="text-xs text-slate-500">Jadwal pengujian berkala dan verifikasi kondisi fisik alat kesehatan.</p>
+                        <select id="public-filter-calibration" onchange="renderPublicAssetTable()" class="w-full py-2 px-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">Semua Status Kalibrasi</option>
+                            <option value="SAFE">Aman (Valid)</option>
+                            <option value="DUE_SOON">Segera Kalibrasi (&le; 30 Hari)</option>
+                            <option value="EXPIRED">Expired / Lewat Jatuh Tempo</option>
+                        </select>
                     </div>
-                    <button v-if="isAdmin" @click="openModalJadwal()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
-                        <i class="fa-solid fa-plus"></i><span>Buat Jadwal Baru</span>
-                    </button>
-                </div>
 
-                <!-- Table Jadwal -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th class="p-3">Tgl Jadwal</th>
-                                    <th class="p-3">Alat Kesehatan (Aset)</th>
-                                    <th class="p-3">Ruangan</th>
-                                    <th class="p-3">Petugas Inspection</th>
-                                    <th class="p-3">Status</th>
-                                    <th class="p-3">Hasil Inspeksi / Catatan</th>
-                                    <th v-if="isAdmin" class="p-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200">
-                                <tr v-for="j in jadwalList" :key="j.id" class="hover:bg-slate-50">
-                                    <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">{{ formatDate(j.tanggal_jadwal) }}</td>
-                                    <td class="p-3">
-                                        <div class="font-bold text-slate-900">{{ getAsetNama(j.aset_id) }}</div>
-                                        <div class="text-[10px] text-slate-400 font-mono">{{ getAsetKode(j.aset_id) }}</div>
-                                    </td>
-                                    <td class="p-3 text-slate-700">{{ getRuanganNama(j.ruangan_id) }}</td>
-                                    <td class="p-3 text-slate-700">{{ j.petugas }}</td>
-                                    <td class="p-3">
-                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold" :class="statusJadwalBadge(j.status)">
-                                            {{ j.status }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-slate-600 italic">{{ j.hasil_inspeksi || '-' }}</td>
-                                    <td v-if="isAdmin" class="p-3 text-right space-x-1 whitespace-nowrap">
-                                        <button @click="openModalJadwal(j)" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </button>
-                                        <button @click="deleteJadwal(j.id)" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr v-if="jadwalList.length === 0">
-                                    <td colspan="7" class="p-8 text-center text-slate-400">Belum ada agenda KIR ALKES.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 4: KELOLA ASET (ADMIN ONLY) -->
-            <section v-if="currentTab === 'data-aset' && isAdmin" class="space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <!-- Condition Filter -->
                     <div>
-                        <h2 class="text-xl font-bold text-slate-800">Manajemen Data Aset ALKES</h2>
-                        <p class="text-xs text-slate-500">Tambah, ubah, dan hapus data alat kesehatan inventaris.</p>
-                    </div>
-                    <button @click="openModalAset()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
-                        <i class="fa-solid fa-plus"></i><span>Tambah Aset ALKES</span>
-                    </button>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center px-4">
-                    <i class="fa-solid fa-magnifying-glass text-slate-400 mr-3"></i>
-                    <input v-model="searchAset" type="text" placeholder="Cari kode aset, nama barang, merk..." class="w-full bg-transparent text-xs text-slate-800 focus:outline-none">
-                </div>
-
-                <!-- Table Aset -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th class="p-3">Kode / NUP</th>
-                                    <th class="p-3">Nama Barang</th>
-                                    <th class="p-3">Merk / Type</th>
-                                    <th class="p-3">No. Seri</th>
-                                    <th class="p-3">Ruangan Saat Ini</th>
-                                    <th class="p-3 text-center">Thn</th>
-                                    <th class="p-3 text-center">Kondisi</th>
-                                    <th class="p-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200">
-                                <tr v-for="item in filteredAsetList" :key="item.id" class="hover:bg-slate-50">
-                                    <td class="p-3 font-mono font-bold text-slate-800">{{ item.kode_aset }}</td>
-                                    <td class="p-3 font-semibold text-slate-900">{{ item.nama_barang }}</td>
-                                    <td class="p-3 text-slate-600">{{ item.merk_tipe || '-' }}</td>
-                                    <td class="p-3 text-slate-600 font-mono">{{ item.no_seri || '-' }}</td>
-                                    <td class="p-3">
-                                        <span class="bg-brand-50 text-brand-700 px-2.5 py-1 rounded-md text-[11px] font-medium border border-brand-200">
-                                            {{ getRuanganNama(item.ruangan_id) }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-center text-slate-600">{{ item.tahun_perolehan }}</td>
-                                    <td class="p-3 text-center">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="kondisiBadgeClass(item.kondisi)">
-                                            {{ item.kondisi }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-right space-x-1 whitespace-nowrap">
-                                        <button @click="openModalAset(item)" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </button>
-                                        <button @click="deleteAset(item.id)" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr v-if="filteredAsetList.length === 0">
-                                    <td colspan="8" class="p-8 text-center text-slate-400">Tidak ada data aset ditemukan.</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <select id="public-filter-condition" onchange="renderPublicAssetTable()" class="w-full py-2 px-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">Semua Kondisi Operasional</option>
+                            <option value="Baik">Baik & Layak Pakai</option>
+                            <option value="Perbaikan">Sedang Perbaikan</option>
+                            <option value="Rusak">Rusak / Afkir</option>
+                        </select>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- TAB 5: MUTASI BARANG ANTA RUANGAN (ADMIN ONLY) -->
-            <section v-if="currentTab === 'mutasi' && isAdmin" class="space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">Mutasi Barang Antar Ruangan</h2>
-                        <p class="text-xs text-slate-500">Pindahkan lokasi barang aset/ALKES dari ruangan asal ke ruangan tujuan.</p>
-                    </div>
-                    <button @click="openModalMutasi()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
-                        <i class="fa-solid fa-right-left"></i><span>Proses Mutasi Baru</span>
-                    </button>
+            <!-- Public Asset Data Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs sm:text-sm border-collapse">
+                        <thead class="bg-slate-800 text-slate-200 uppercase font-semibold text-[11px] tracking-wider">
+                            <tr>
+                                <th class="p-4">Kode Aset</th>
+                                <th class="p-4">Nama Aset / Alat</th>
+                                <th class="p-4">Kategori & Lokasi</th>
+                                <th class="p-4">Merk / Tipe</th>
+                                <th class="p-4">Kondisi</th>
+                                <th class="p-4">Tgl Kalibrasi Terakhir</th>
+                                <th class="p-4">Jatuh Tempo Kalibrasi</th>
+                                <th class="p-4 text-center">Status Kalibrasi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="public-asset-table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
+                            <!-- JS Dynamic Rows -->
+                        </tbody>
+                    </table>
                 </div>
-
-                <!-- Table History Mutasi -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="p-4 bg-slate-50 border-b border-slate-200 font-bold text-xs text-slate-700">
-                        Riwayat Mutasi Barang
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th class="p-3">Tanggal</th>
-                                    <th class="p-3">Nama Barang ALKES</th>
-                                    <th class="p-3">Ruangan Asal</th>
-                                    <th class="p-3">Ruangan Tujuan</th>
-                                    <th class="p-3">Alasan Mutasi</th>
-                                    <th class="p-3">Petugas Penanggung Jawab</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200">
-                                <tr v-for="m in mutasiList" :key="m.id" class="hover:bg-slate-50">
-                                    <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">{{ formatDate(m.tanggal_mutasi) }}</td>
-                                    <td class="p-3 font-bold text-slate-900">{{ getAsetNama(m.aset_id) }}</td>
-                                    <td class="p-3">
-                                        <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[11px] font-medium">
-                                            {{ getRuanganNama(m.ruangan_asal_id) }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3">
-                                        <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-medium">
-                                            {{ getRuanganNama(m.ruangan_tujuan_id) }}
-                                        </span>
-                                    </td>
-                                    <td class="p-3 text-slate-600">{{ m.alasan || '-' }}</td>
-                                    <td class="p-3 text-slate-700">{{ m.petugas }}</td>
-                                </tr>
-                                <tr v-if="mutasiList.length === 0">
-                                    <td colspan="6" class="p-8 text-center text-slate-400">Belum ada riwayat mutasi barang.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- Pagination Footer -->
+                <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
+                    <span id="public-table-info">Menampilkan 0 data</span>
+                    <div id="public-pagination-controls" class="flex gap-1"></div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- TAB 6: DATA RUANGAN (ADMIN ONLY) -->
-            <section v-if="currentTab === 'data-ruangan' && isAdmin" class="space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">Master Data Ruangan</h2>
-                        <p class="text-xs text-slate-500">Kelola unit, poliklinik, laboratorium, dan ruangan di fasilitas pelayanan kesehatan.</p>
+        <!-- TAB 3: CALIBRATION MONITORING & URGENT NOTIFICATIONS -->
+        <section id="view-notifications" class="space-y-6 hidden">
+            <!-- Warning Banner Overview -->
+            <div class="bg-gradient-to-r from-slate-900 to-rose-950 p-6 rounded-2xl text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-rose-800/40">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 text-rose-400 font-semibold text-xs tracking-wider uppercase">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Pusat Pengawasan Kalibrasi Alat Kesehatan
                     </div>
-                    <button @click="openModalRuangan()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
-                        <i class="fa-solid fa-plus"></i><span>Tambah Ruangan</span>
-                    </button>
+                    <h2 class="text-xl font-bold">Jadwal & Peringatan Dini Kalibrasi Aset</h2>
+                    <p class="text-xs text-slate-300 max-w-2xl">
+                        Aset dengan status <span class="text-rose-400 font-bold">Kadaluarsa</span> tidak direkomendasikan untuk tindakan medis aktif sampai sertifikasi kalibrasi baru diterbitkan oleh Lembaga Pengujian Kelaikan (BPFK/Vendor Terakreditasi).
+                    </p>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div v-for="r in ruanganList" :key="r.id" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative group hover:border-brand-500 transition">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="bg-slate-100 text-slate-700 font-mono text-[11px] font-bold px-2 py-1 rounded-md">{{ r.kode_ruangan }}</span>
-                            <div class="space-x-1">
-                                <button @click="openModalRuangan(r)" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg text-xs">
-                                    <i class="fa-solid fa-pen"></i>
-                                </button>
-                                <button @click="deleteRuangan(r.id)" class="text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg text-xs">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <h3 class="font-bold text-slate-800 text-base mb-1">{{ r.nama_ruangan }}</h3>
-                        <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-location-dot mr-1"></i> Gedung / Lokasi: {{ r.lokasi_gedung || '-' }}</p>
-                        <div class="border-t border-slate-100 pt-3 text-xs flex justify-between text-slate-600">
-                            <span>PJ: <strong>{{ r.penanggung_jawab || '-' }}</strong></span>
-                            <span class="text-brand-600 font-bold">{{ countAsetByRuangan(r.id) }} Aset</span>
-                        </div>
-                    </div>
+                <div class="bg-rose-900/50 border border-rose-700/50 px-4 py-3 rounded-xl text-center">
+                    <p class="text-xs text-slate-300">Total Butuh Penanganan</p>
+                    <p id="urgent-total-count" class="text-2xl font-black text-rose-300">0 Unit</p>
                 </div>
-            </section>
+            </div>
 
-        </main>
+            <!-- Overdue Assets Urgent Action Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-rose-600"></span> Aset Lewat Jatuh Tempo (Perlu Kalibrasi Segera)
+                </h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="bg-rose-50 text-rose-900 font-bold uppercase text-[11px]">
+                            <tr>
+                                <th class="p-3">Kode Aset</th>
+                                <th class="p-3">Nama Alat Medis</th>
+                                <th class="p-3">Lokasi / Ruangan</th>
+                                <th class="p-3">Jatuh Tempo</th>
+                                <th class="p-3">Terlambat</th>
+                                <th class="p-3 text-right">Tindakan Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expired-assets-body" class="divide-y divide-slate-100">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-        <!-- MODAL LOGIN ADMIN -->
-        <div v-if="showLoginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
-                <button @click="showLoginModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+            <!-- Due Soon Assets (Next 30 Days) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-amber-500"></span> Aset Jatuh Tempo Dalam 30 Hari Mendatang
+                </h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="bg-amber-50 text-amber-900 font-bold uppercase text-[11px]">
+                            <tr>
+                                <th class="p-3">Kode Aset</th>
+                                <th class="p-3">Nama Alat Medis</th>
+                                <th class="p-3">Lokasi / Ruangan</th>
+                                <th class="p-3">Jatuh Tempo</th>
+                                <th class="p-3">Sisa Waktu</th>
+                                <th class="p-3 text-right">Tindakan Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="duesoon-assets-body" class="divide-y divide-slate-100">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: ADMIN PORTAL (CRUD MANAGEMENT) -->
+        <section id="view-admin" class="space-y-6 hidden">
+            <!-- Admin Authorization Shield -->
+            <div id="admin-lock-screen" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center space-y-4 max-w-md mx-auto my-12">
+                <div class="w-16 h-16 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mx-auto text-2xl font-bold">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Akses Terbatas Khusus Admin</h2>
+                    <p class="text-xs text-slate-500 mt-1">Silakan login sebagai pengelola SIMA-RSUD untuk menambah, mengubah, mengedit, dan menghapus data aset maupun jadwal kalibrasi.</p>
+                </div>
+                <button onclick="openLoginModal()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm transition shadow-sm">
+                    Login Pengelola RSUD
                 </button>
-                <div class="text-center mb-6">
-                    <div class="w-12 h-12 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center mx-auto text-xl mb-3">
-                        <i class="fa-solid fa-user-lock"></i>
+            </div>
+
+            <!-- Admin Active Panel -->
+            <div id="admin-active-panel" class="space-y-6 hidden">
+                <!-- Admin Header Toolbar -->
+                <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-teal-400 uppercase tracking-wider">
+                            <i class="fa-solid fa-user-shield"></i> Portal Operasional Administrator
+                        </div>
+                        <h2 class="text-xl font-bold text-white mt-1">Pengelolaan Data Aset & Entri Kalibrasi</h2>
+                        <p class="text-xs text-slate-400">Anda dapat memutakhirkan data alat rumah sakit secara konsisten.</p>
                     </div>
-                    <h3 class="text-xl font-bold text-slate-800">Login Administrator</h3>
-                    <p class="text-xs text-slate-500 mt-1">Masukkan kredensial untuk mengelola data</p>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openAssetFormModal()" class="px-4 py-2.5 text-xs sm:text-sm font-semibold bg-brand-500 hover:bg-brand-400 text-white rounded-xl transition flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-plus-circle text-base"></i> Tambah Aset Baru
+                        </button>
+                    </div>
                 </div>
 
-                <form @submit.prevent="handleLogin" class="space-y-4">
+                <!-- Admin Asset Table -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2 pt-2">
+                        <h3 class="text-base font-bold text-slate-900">Master Data Aset RSUD</h3>
+                        <div class="w-full sm:w-72 relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="text" id="admin-search" oninput="renderAdminAssetTable()" placeholder="Cari dalam tabel admin..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs sm:text-sm">
+                            <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] tracking-wider border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">Kode</th>
+                                    <th class="p-3">Nama Alat / Aset</th>
+                                    <th class="p-3">Kategori</th>
+                                    <th class="p-3">Lokasi / Ruang</th>
+                                    <th class="p-3">Kondisi</th>
+                                    <th class="p-3">Jatuh Tempo</th>
+                                    <th class="p-3 text-center">Status</th>
+                                    <th class="p-3 text-right">Aksi Kelola</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-asset-table-body" class="divide-y divide-slate-100 font-medium">
+                                <!-- JS Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>&copy; 2026 RSUD - Sistem Informasi Management Aset & Pengawasan Kalibrasi Terpadu.</p>
+            <p class="flex items-center gap-2 text-slate-400">
+                <span id="footer-db-status" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Local Storage</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- MODAL 1: ADD / EDIT ASSET FORM MODAL -->
+    <div id="modal-asset-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white rounded-t-2xl">
+                <h3 id="modal-asset-title" class="text-base font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-box text-brand-400"></i> Tambah Data Aset RSUD
+                </h3>
+                <button onclick="closeAssetFormModal()" class="text-slate-400 hover:text-white transition text-lg">&times;</button>
+            </div>
+
+            <form id="form-asset" onsubmit="handleAssetFormSubmit(event)" class="p-6 space-y-4 text-xs sm:text-sm">
+                <input type="hidden" id="asset-id">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">Username / Email</label>
-                        <input v-model="loginForm.email" type="text" required placeholder="admin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:ring-brand-500 focus:border-brand-500">
+                        <label class="block font-semibold text-slate-700 mb-1">Kode Unique Aset <span class="text-rose-500">*</span></label>
+                        <input type="text" id="field-code" required placeholder="Contoh: AST-MED-2026-001" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
-                        <input v-model="loginForm.password" type="password" required placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:ring-brand-500 focus:border-brand-500">
+                        <label class="block font-semibold text-slate-700 mb-1">Nama Alat / Aset <span class="text-rose-500">*</span></label>
+                        <input type="text" id="field-name" required placeholder="Contoh: Ventilator Portable Mindray" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
-                    <div v-if="loginError" class="p-3 bg-rose-50 text-rose-600 text-xs rounded-xl font-medium">
-                        {{ loginError }}
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kategori Aset <span class="text-rose-500">*</span></label>
+                        <select id="field-category" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="Medis">Alat Medis Utama</option>
+                            <option value="Laboratorium">Laboratorium</option>
+                            <option value="Radiologi">Radiologi</option>
+                            <option value="Keperawatan">Keperawatan / Bangsal</option>
+                            <option value="Non-Medis">Non-Medis & Sarpras</option>
+                        </select>
                     </div>
-                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold py-3 rounded-xl shadow-lg shadow-brand-500/30 transition">
-                        Masuk Sistem
-                    </button>
-                </form>
-                <p class="text-[11px] text-center text-slate-400 mt-4">
-                    Kredensial Default: Username: <b>admin</b> | Pass: <b>admin123</b>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Ruangan / Lokasi <span class="text-rose-500">*</span></label>
+                        <input type="text" id="field-location" required placeholder="Contoh: Ruang ICU Flamboyan Lt.2" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Merk / Tipe</label>
+                        <input type="text" id="field-brand" placeholder="Mindray SV300" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Nomor Seri (Serial No)</label>
+                        <input type="text" id="field-serial" placeholder="SN-8982312" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kondisi Operasional</label>
+                        <select id="field-condition" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="Baik">Baik & Layak Pakai</option>
+                            <option value="Perbaikan">Sedang Perbaikan</option>
+                            <option value="Rusak">Rusak / Afkir</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100 my-2">
+                <p class="font-bold text-slate-800 text-xs uppercase tracking-wider text-brand-600 flex items-center gap-1.5">
+                    <i class="fa-solid fa-calendar-check"></i> Pengaturan Periode & Jadwal Kalibrasi
                 </p>
-            </div>
-        </div>
 
-        <!-- MODAL GANTI PASSWORD ADMIN -->
-        <div v-if="showChangePasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
-                <button @click="showChangePasswordModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-                <div class="text-center mb-6">
-                    <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-xl mb-3">
-                        <i class="fa-solid fa-key"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-slate-800">Ganti Password Admin</h3>
-                    <p class="text-xs text-slate-500 mt-1">Ubah username atau password akun Anda</p>
-                </div>
-
-                <form @submit.prevent="handleChangePassword" class="space-y-4 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Username Baru</label>
-                        <input v-model="changePassForm.newUsername" type="text" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-brand-500 focus:border-brand-500">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Password Lama</label>
-                        <input v-model="changePassForm.oldPassword" type="password" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-brand-500 focus:border-brand-500">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Password Baru</label>
-                        <input v-model="changePassForm.newPassword" type="password" required placeholder="Minimal 6 karakter" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-brand-500 focus:border-brand-500">
-                    </div>
-
-                    <div v-if="changePassMsg.text" :class="changePassMsg.isError ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'" class="p-3 text-xs rounded-xl font-medium">
-                        {{ changePassMsg.text }}
-                    </div>
-
-                    <div class="pt-2 flex justify-end space-x-2">
-                        <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
-                        <button type="submit" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow">Perbarui Akun</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL FORM ASET ALKES -->
-        <div v-if="showModalAset" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                <button @click="showModalAset = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-                <h3 class="text-lg font-bold text-slate-800 mb-4">{{ formAset.id ? 'Edit Aset ALKES' : 'Tambah Aset ALKES' }}</h3>
-
-                <form @submit.prevent="saveAset" class="space-y-4 text-xs">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Kode Aset / NUP</label>
-                            <input v-model="formAset.kode_aset" type="text" required placeholder="ALKES-001" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Tahun Perolehan</label>
-                            <input v-model="formAset.tahun_perolehan" type="number" required placeholder="2023" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Nama Barang / Alat Kesehatan</label>
-                        <input v-model="formAset.nama_barang" type="text" required placeholder="Contoh: Patient Monitor" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Merk / Tipe</label>
-                            <input v-model="formAset.merk_tipe" type="text" placeholder="Mindray uMEC10" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Nomor Seri (S/N)</label>
-                            <input v-model="formAset.no_seri" type="text" placeholder="SN12345678" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Ruangan Penempatan</label>
-                        <select v-model="formAset.ruangan_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                            <option value="">-- Pilih Ruangan --</option>
-                            <option v-for="r in ruanganList" :key="r.id" :value="r.id">{{ r.nama_ruangan }}</option>
+                        <label class="block font-semibold text-slate-700 mb-1">Frekuensi Kalibrasi</label>
+                        <select id="field-interval-months" onchange="autoCalculateNextCalibration()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="6">Setiap 6 Bulan</option>
+                            <option value="12" selected>Setiap 12 Bulan (1 Tahun)</option>
+                            <option value="24">Setiap 24 Bulan (2 Tahun)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Kondisi Barang</label>
-                        <select v-model="formAset.kondisi" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                            <option value="Baik">Baik</option>
-                            <option value="Rusak Ringan">Rusak Ringan</option>
-                            <option value="Rusak Berat">Rusak Berat</option>
-                        </select>
-                    </div>
-
-                    <div class="pt-2 flex justify-end space-x-2">
-                        <button type="button" @click="showModalAset = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
-                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL FORM MUTASI -->
-        <div v-if="showModalMutasi" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
-                <button @click="showModalMutasi = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-                <h3 class="text-lg font-bold text-slate-800 mb-4">Proses Mutasi Barang Antar Ruangan</h3>
-
-                <form @submit.prevent="saveMutasi" class="space-y-4 text-xs">
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Pilih Barang / Aset ALKES</label>
-                        <select v-model="formMutasi.aset_id" @change="onAsetMutasiSelect" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                            <option value="">-- Pilih Aset --</option>
-                            <option v-for="a in asetList" :key="a.id" :value="a.id">{{ a.nama_barang }} ({{ a.kode_aset }}) - Ruang: {{ getRuanganNama(a.ruangan_id) }}</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Ruangan Asal</label>
-                            <input type="text" readonly :value="getRuanganNama(formMutasi.ruangan_asal_id)" class="w-full bg-slate-100 border border-slate-200 text-slate-500 rounded-xl p-2.5 font-semibold">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-1">Ruangan Tujuan</label>
-                            <select v-model="formMutasi.ruangan_tujuan_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                                <option value="">-- Pilih Tujuan --</option>
-                                <option v-for="r in filteredRuanganTujuan" :key="r.id" :value="r.id">{{ r.nama_ruangan }}</option>
-                            </select>
-                        </div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tgl Kalibrasi Terakhir</label>
+                        <input type="date" id="field-last-calibrated" onchange="autoCalculateNextCalibration()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Mutasi</label>
-                        <input v-model="formMutasi.tanggal_mutasi" type="date" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Petugas Penanggung Jawab</label>
-                        <input v-model="formMutasi.petugas" type="text" required placeholder="Nama Petugas IPSRS / Sarpras" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Alasan Mutasi</label>
-                        <textarea v-model="formMutasi.alasan" rows="2" placeholder="Contoh: Kebutuhan darurat unit ICU..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5"></textarea>
-                    </div>
-
-                    <div class="pt-2 flex justify-end space-x-2">
-                        <button type="button" @click="showModalMutasi = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
-                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Eksekusi Mutasi</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL FORM JADWAL KIR -->
-        <div v-if="showModalJadwal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
-                <button @click="showModalJadwal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-                <h3 class="text-lg font-bold text-slate-800 mb-4">{{ formJadwal.id ? 'Edit Jadwal KIR' : 'Buat Jadwal KIR ALKES' }}</h3>
-
-                <form @submit.prevent="saveJadwal" class="space-y-4 text-xs">
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Pilih Alat Kesehatan</label>
-                        <select v-model="formJadwal.aset_id" @change="onAsetJadwalSelect" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                            <option value="">-- Pilih ALKES --</option>
-                            <option v-for="a in asetList" :key="a.id" :value="a.id">{{ a.nama_barang }} ({{ a.kode_aset }})</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Jadwal Inspeksi</label>
-                        <input v-model="formJadwal.tanggal_jadwal" type="date" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Petugas Inspeksi / Teknisi</label>
-                        <input v-model="formJadwal.petugas" type="text" required placeholder="Tim Elektromedis / IPSRS" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Status Inspeksi</label>
-                        <select v-model="formJadwal.status" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                            <option value="Terjadwal">Terjadwal</option>
-                            <option value="Selesai">Selesai (Lolos Verifikasi)</option>
-                            <option value="Menunggu Sparepart">Menunggu Sparepart</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Hasil Inspeksi / Catatan</label>
-                        <textarea v-model="formJadwal.hasil_inspeksi" rows="2" placeholder="Catatan kondisi fisik/kalibrasi..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5"></textarea>
-                    </div>
-
-                    <div class="pt-2 flex justify-end space-x-2">
-                        <button type="button" @click="showModalJadwal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
-                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan Agenda</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL FORM RUANGAN -->
-        <div v-if="showModalRuangan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
-                <button @click="showModalRuangan = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-                <h3 class="text-lg font-bold text-slate-800 mb-4">{{ formRuangan.id ? 'Edit Ruangan' : 'Tambah Ruangan Baru' }}</h3>
-
-                <form @submit.prevent="saveRuangan" class="space-y-4 text-xs">
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Kode Ruangan</label>
-                        <input v-model="formRuangan.kode_ruangan" type="text" required placeholder="R-IGD-01" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Nama Ruangan / Unit</label>
-                        <input v-model="formRuangan.nama_ruangan" type="text" required placeholder="Ruang IGD Utama" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Gedung / Lokasi</label>
-                        <input v-model="formRuangan.lokasi_gedung" type="text" placeholder="Gedung A LT. 1" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Penanggung Jawab (Ka. Ruangan)</label>
-                        <input v-model="formRuangan.penanggung_jawab" type="text" placeholder="Ns. Budi Santoso, S.Kep" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
-                    </div>
-
-                    <div class="pt-2 flex justify-end space-x-2">
-                        <button type="button" @click="showModalRuangan = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
-                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- MODAL KONFIGURASI SUPABASE -->
-        <div v-if="showConfigModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
-                <button @click="showConfigModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-                <h3 class="text-lg font-bold text-slate-800 mb-2">Konfigurasi Database Supabase</h3>
-                <p class="text-xs text-slate-500 mb-4">Masukkan Supabase URL & Anon Key dari Dashboard Supabase Anda.</p>
-
-                <!-- Feedback Status / Error Message -->
-                <div v-if="configError" class="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start space-x-2">
-                    <i class="fa-solid fa-triangle-exclamation text-sm mt-0.5"></i>
-                    <div>
-                        <p class="font-bold">Koneksi Supabase Gagal:</p>
-                        <p class="mt-0.5 text-[11px] leading-relaxed">{{ configError }}</p>
+                        <label class="block font-semibold text-slate-700 mb-1">Jatuh Tempo Kalibrasi <span class="text-rose-500">*</span></label>
+                        <input type="date" id="field-due-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-brand-700">
                     </div>
                 </div>
 
-                <form @submit.prevent="saveSupabaseConfig" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Catatan Tambahan / Spesifikasi Alat</label>
+                    <textarea id="field-notes" rows="2" placeholder="Catatan khusus kondisi atau lembaga penguji..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeAssetFormModal()" class="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-white bg-brand-600 hover:bg-brand-500 rounded-xl font-semibold transition shadow-md">Simpan Data Aset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: RECORD CALIBRATION ACTION MODAL -->
+    <div id="modal-calibrate-action" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="p-5 border-b border-slate-100 bg-emerald-700 text-white flex items-center justify-between">
+                <h3 class="text-base font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-stamp"></i> Catat Hasil Kalibrasi Baru
+                </h3>
+                <button onclick="closeCalibrateModal()" class="text-emerald-200 hover:text-white text-lg">&times;</button>
+            </div>
+            <form id="form-calibrate-record" onsubmit="handleCalibrateSubmit(event)" class="p-6 space-y-4 text-xs sm:text-sm">
+                <input type="hidden" id="calib-asset-id">
+                
+                <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 space-y-1">
+                    <p class="text-xs uppercase font-bold text-emerald-700">Aset yang Dikalibrasi:</p>
+                    <p id="calib-asset-name-display" class="font-bold text-sm">Nama Alat</p>
+                    <p id="calib-asset-code-display" class="text-xs text-emerald-800">Kode Aset</p>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Tanggal Pelaksanaan Kalibrasi <span class="text-rose-500">*</span></label>
+                    <input type="date" id="calib-date-performed" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Lembaga / BPFK / Teknisi Penguji</label>
+                    <input type="text" id="calib-tester" placeholder="Contoh: BPFK Surakarta / PT Sinar Medika" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Nomor Sertifikat Kalibrasi</label>
+                    <input type="text" id="calib-certificate-no" placeholder="Contoh: CERT/BPFK/2026/0912" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Berlaku Sampai Tanggal (Jatuh Tempo Baru) <span class="text-rose-500">*</span></label>
+                    <input type="date" id="calib-next-due" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-700">
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeCalibrateModal()" class="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold transition shadow-md">Perbarui Kalibrasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: SUPABASE DATABASE CONFIG & SQL SCRIPT -->
+    <div id="modal-supabase-config" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div class="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between rounded-t-2xl">
+                <h3 class="text-base font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-database text-teal-400"></i> Pengaturan Koneksi Supabase Database
+                </h3>
+                <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-5 text-xs sm:text-sm">
+                <p class="text-slate-600 leading-relaxed">
+                    Aplikasi ini dapat dihubungkan langsung ke **Supabase** secara gratis. Isikan **Project URL** dan **Anon Key** dari dashboard Supabase Anda.
+                </p>
+
+                <div class="space-y-3">
                     <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Supabase URL</label>
-                        <input v-model="supabaseConfig.url" type="text" placeholder="https://xyz...supabase.co" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        <label class="block font-semibold text-slate-700 mb-1">Supabase Project URL</label>
+                        <input type="text" id="cfg-supabase-url" placeholder="https://xyzcompany.supabase.co" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500">
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Supabase Anon Key</label>
-                        <input v-model="supabaseConfig.key" type="password" placeholder="eyJhbG..." required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        <input type="text" id="cfg-supabase-key" placeholder="eyJhY2... (Anon public key)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500">
                     </div>
+                </div>
 
-                    <div class="pt-2 flex justify-between items-center">
-                        <button type="button" @click="clearSupabaseConfig" class="text-rose-600 text-xs hover:underline font-semibold">Gunakan Mode Demo</button>
-                        <div class="space-x-2">
-                            <button type="button" @click="showConfigModal = false" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl">Batal</button>
-                            <button type="submit" :disabled="isConnecting" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-400 text-white rounded-xl font-bold shadow flex items-center space-x-2 inline-flex">
-                                <i v-if="isConnecting" class="fa-solid fa-spinner animate-spin"></i>
-                                <span>{{ isConnecting ? 'Menguji...' : 'Simpan & Hubungkan' }}</span>
-                            </button>
-                        </div>
+                <div class="flex items-center gap-3 pt-2">
+                    <button onclick="saveSupabaseConfig()" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xl transition shadow-sm">
+                        Simpan Koneksi & Test
+                    </button>
+                    <button onclick="resetToLocalDB()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">
+                        Gunakan Local Storage
+                    </button>
+                </div>
+
+                <hr class="border-slate-200">
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-slate-800">Skrip DDL SQL untuk Supabase (Salin ke SQL Editor Supabase):</h4>
+                        <button onclick="copySQLSchema()" class="text-xs bg-slate-800 text-white px-2.5 py-1 rounded-lg hover:bg-slate-700">
+                            <i class="fa-solid fa-copy"></i> Salin SQL
+                        </button>
                     </div>
-                </form>
+                    <pre class="bg-slate-900 text-teal-300 p-4 rounded-xl text-[11px] font-mono overflow-x-auto border border-slate-800 select-all">
+CREATE TABLE assets (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  location TEXT NOT NULL,
+  brand TEXT,
+  serial TEXT,
+  condition TEXT DEFAULT 'Baik',
+  interval_months INT DEFAULT 12,
+  last_calibrated DATE,
+  due_date DATE NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Buka akses publik/anonim untuk laporan & admin CRUD (atau sesuaikan RLS)
+ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read Access" ON assets FOR SELECT USING (true);
+CREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);
+                    </pre>
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- FOOTER -->
-        <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
-            <p>&copy; 2026 Sistem KIR Ruangan Barang ALKES • Siap untuk GitHub Pages & Supabase</p>
-        </footer>
+    <!-- MODAL 4: GITHUB PAGES DEPLOYMENT GUIDE -->
+    <div id="modal-github-help" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div class="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between rounded-t-2xl">
+                <h3 class="text-base font-bold flex items-center gap-2">
+                    <i class="fa-brands fa-github text-slate-300"></i> Panduan Hosting Gratis di GitHub Pages
+                </h3>
+                <button onclick="closeGithubHelpModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
 
+            <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <ol class="list-decimal list-inside space-y-3 font-medium">
+                    <li>
+                        <strong class="text-slate-900">Buat Repositori Baru di GitHub:</strong>
+                        <p class="text-slate-500 pl-5 pt-1">Buka GitHub.com, pilih <em>New Repository</em>, beri nama misal <code class="bg-slate-100 px-1 rounded text-slate-800">sima-rsud</code>, lalu set ke Public.</p>
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Simpan File Ini Sebagai <code class="bg-slate-100 px-1 rounded text-slate-800">index.html</code>:</strong>
+                        <p class="text-slate-500 pl-5 pt-1">Simpan semua file kode HTML tunggal ini dengan nama file persis <code class="bg-slate-100 px-1 rounded text-slate-800">index.html</code>.</p>
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Upload File ke GitHub:</strong>
+                        <p class="text-slate-500 pl-5 pt-1">Klik <em>Upload an existing file</em> di halaman repositori GitHub Anda, upload file <code class="bg-slate-100 px-1 rounded text-slate-800">index.html</code>, lalu klik <em>Commit changes</em>.</p>
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Aktifkan GitHub Pages:</strong>
+                        <p class="text-slate-500 pl-5 pt-1">Masuk ke menu <strong>Settings</strong> &rarr; <strong>Pages</strong>. Pada bagian <em>Build and deployment / Branch</em>, pilih branch <code class="bg-slate-100 px-1 rounded text-slate-800">main</code> (root), lalu klik <strong>Save</strong>.</p>
+                    </li>
+                    <li>
+                        <strong class="text-slate-900">Aplikasi Siap Diakses!</strong>
+                        <p class="text-slate-500 pl-5 pt-1">Website SIMA-RSUD Anda akan aktif dalam 1-2 menit pada URL: <code class="bg-brand-50 text-brand-700 font-mono px-1.5 py-0.5 rounded">https://username.github.io/sima-rsud/</code></p>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: LOGIN ADMIN MODAL -->
+    <div id="modal-login" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900">Login Admin RSUD</h3>
+                <p class="text-xs text-slate-500">Masukkan kata sandi otorisasi petugas aset.</p>
+            </div>
+
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-3 text-xs sm:text-sm">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Username / NIP</label>
+                    <input type="text" id="login-username" value="admin.rsud" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Password</label>
+                    <input type="password" id="login-password" value="admin123" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <p class="text-[10px] text-slate-400 mt-1">Default Password Demo: <span class="font-bold text-slate-600">admin123</span></p>
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeLoginModal()" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">Batal</button>
+                    <button type="submit" class="w-1/2 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl transition shadow-md">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM NOTIFICATION MODAL ALERTS -->
+    <div id="custom-toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none text-xs sm:text-sm">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message">Pesan notifikasi</span>
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted } = Vue;
+        // APP INITIAL STATE & STORAGE CONFIGURATION
+        let assets = [];
+        let supabaseClient = null;
+        let isAdminLoggedIn = false;
+        let currentTab = 'dashboard';
 
-        createApp({
-            setup() {
-                // Navigation & State
-                const currentTab = ref('dashboard');
-                const isAdmin = ref(false);
-                const isSupabaseConnected = ref(false);
-                const showLoginModal = ref(false);
-                const showChangePasswordModal = ref(false);
-                const showConfigModal = ref(false);
-                const configError = ref('');
-                const isConnecting = ref(false);
+        // Sample initial datasets for RSUD
+        const DEFAULT_ASSETS = [
+            {
+                id: '101',
+                code: 'AST-MED-2025-001',
+                name: 'Ventilator Transport ICU',
+                category: 'Medis',
+                location: 'Ruang ICU Utama Flamboyan',
+                brand: 'Mindray SV300',
+                serial: 'SN-998231001',
+                condition: 'Baik',
+                interval_months: 12,
+                last_calibrated: '2025-02-10',
+                due_date: '2026-02-10',
+                notes: 'Kalibrasi oleh BPFK Surakarta'
+            },
+            {
+                id: '102',
+                code: 'AST-MED-2025-002',
+                name: 'Defibrillator Biphasic Monitor',
+                category: 'Medis',
+                location: 'IGD (Instalasi Gawat Darurat)',
+                brand: 'Zoll M-Series',
+                serial: 'SN-77238120',
+                condition: 'Baik',
+                interval_months: 12,
+                last_calibrated: '2025-11-01',
+                due_date: '2026-11-01',
+                notes: 'Siap pakai'
+            },
+            {
+                id: '103',
+                code: 'AST-RAD-2024-005',
+                name: 'Mobile X-Ray Digital',
+                category: 'Radiologi',
+                location: 'Gedung Radiologi Lt. 1',
+                brand: 'Shimadzu MUX-100J',
+                serial: 'SN-44109281',
+                condition: 'Baik',
+                interval_months: 12,
+                last_calibrated: '2025-08-15',
+                due_date: '2026-08-15',
+                notes: 'Pemeriksaan uji kesesuaian radiasi'
+            },
+            {
+                id: '104',
+                code: 'AST-LAB-2024-012',
+                name: 'Hematology Analyzer 5 Part',
+                category: 'Laboratorium',
+                location: 'Laboratorium Sentral',
+                brand: 'Sysmex XN-550',
+                serial: 'SN-1102931',
+                condition: 'Perbaikan',
+                interval_months: 6,
+                last_calibrated: '2025-09-01',
+                due_date: '2026-03-01',
+                notes: 'Perlu penggantian probe reagent'
+            },
+            {
+                id: '105',
+                code: 'AST-KPR-2025-088',
+                name: 'Infusion Pump Digital',
+                category: 'Keperawatan',
+                location: 'Ruang Perawatan VIP Melati',
+                brand: 'Terumo TE-171',
+                serial: 'SN-8820192',
+                condition: 'Baik',
+                interval_months: 12,
+                last_calibrated: '2024-10-10',
+                due_date: '2025-10-10',
+                notes: 'Kadaluarsa - Butuh Kalibrasi Ulang!'
+            }
+        ];
 
-                // Logged In Admin Details
-                const loggedInUser = ref({
-                    id: null,
-                    username: localStorage.getItem('admin_username') || 'admin',
-                    password: localStorage.getItem('admin_password') || 'admin123'
-                });
+        window.addEventListener('DOMContentLoaded', async () => {
+            initSupabaseFromStorage();
+            await loadAssetsData();
+            checkAdminSession();
+            renderAllViews();
+        });
 
-                // Forms
-                const loginForm = ref({ email: '', password: '' });
-                const loginError = ref('');
+        function initSupabaseFromStorage() {
+            const url = localStorage.getItem('https://wzmjdlxnjoyzzvzpmhqj.supabase.co');
+            const key = localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bWpkbHhuam95enp2enBtaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwMTU2NjgsImV4cCI6MjEwNTU5MTY2OH0.i8LtB72RGso_--VhWNQVpjFr44dHK_pYpRqsuMkCQ4c');
 
-                const changePassForm = ref({
-                    newUsername: loggedInUser.value.username,
-                    oldPassword: '',
-                    newPassword: ''
-                });
-                const changePassMsg = ref({ text: '', isError: false });
+            if (url && key && window.supabase) {
+                try {
+                    supabaseClient = window.supabase.createClient(url, key);
+                    document.getElementById('db-warning-banner').classList.add('hidden');
+                    document.getElementById('footer-db-status').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Terhubung Supabase Database`;
+                    document.getElementById('cfg-supabase-url').value = url;
+                    document.getElementById('cfg-supabase-key').value = key;
+                } catch (err) {
+                    console.error('Supabase init error:', err);
+                    supabaseClient = null;
+                }
+            }
+        }
 
-                const configError = ref('');
-                // Handle Login Admin
-                const handleLogin = async () => {
-                    loginError.value = '';
-                    const inputUser = loginForm.value.email.trim();
-                    const inputPass = loginForm.value.password.trim();
-
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        try {
-                            const { data, error } = await supabaseClient
-                                .from('admin_users')
-                                .select('*')
-                                .eq('username', inputUser)
-                                .eq('password', inputPass)
-                                .single();
-
-                            if (data && !error) {
-                                isAdmin.value = true;
-                                loggedInUser.value = { id: data.id, username: data.username, password: data.password };
-                                showLoginModal.value = false;
-                                loginForm.value = { email: '', password: '' };
-                                return;
-                            }
-                        } catch (e) {
-                            console.warn('Cek admin_users gagal, mencoba fallback:', e);
-                        }
-                    }
-
-                    // Fallback / Local Auth Check
-                    if (inputUser === loggedInUser.value.username && inputPass === loggedInUser.value.password) {
-                        isAdmin.value = true;
-                        showLoginModal.value = false;
-                        loginForm.value = { email: '', password: '' };
-                    } else {
-                        loginError.value = 'Username atau password salah!';
-                    }
-                };
-
-                const logout = () => {
-                    isAdmin.value = false;
-                    currentTab.value = 'dashboard';
-                };
-
-                // Handle Change Password Admin
-                const handleChangePassword = async () => {
-                    changePassMsg.value = { text: '', isError: false };
-
-                    if (changePassForm.value.oldPassword !== loggedInUser.value.password) {
-                        changePassMsg.value = { text: 'Password lama tidak sesuai!', isError: true };
+        async function loadAssetsData() {
+            if (supabaseClient) {
+                try {
+                    const { data, error } = await supabaseClient.from('assets').select('*').order('created_at', { ascending: false });
+                    if (error) throw error;
+                    if (data && data.length > 0) {
+                        assets = data;
                         return;
                     }
+                } catch (err) {
+                    console.warn('Gagal memuat dari Supabase, beralih ke local storage:', err);
+                }
+            }
 
-                    if (changePassForm.value.newPassword.length < 4) {
-                        changePassMsg.value = { text: 'Password baru minimal 4 karakter!', isError: true };
-                        return;
-                    }
+            // Fallback Local Storage
+            const localData = localStorage.getItem('RSUD_ASSETS_DATA');
+            if (localData) {
+                assets = JSON.parse(localData);
+            } else {
+                assets = DEFAULT_ASSETS;
+                saveAssetsToLocalStorage();
+            }
+        }
 
-                    const newUsername = changePassForm.value.newUsername.trim();
-                    const newPassword = changePassForm.value.newPassword.trim();
+        function saveAssetsToLocalStorage() {
+            localStorage.setItem('RSUD_ASSETS_DATA', JSON.stringify(assets));
+        }
 
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        try {
-                            if (loggedInUser.value.id) {
-                                await supabaseClient
-                                    .from('admin_users')
-                                    .update({ username: newUsername, password: newPassword })
-                                    .eq('id', loggedInUser.value.id);
-                            } else {
-                                await supabaseClient
-                                    .from('admin_users')
-                                    .update({ username: newUsername, password: newPassword })
-                                    .eq('username', loggedInUser.value.username);
-                            }
-                        } catch (err) {
-                            console.error('Gagal update admin di Supabase:', err);
-                        }
-                    }
+        async function syncAssetToDatabase(asset) {
+            if (supabaseClient) {
+                try {
+                    const { error } = await supabaseClient.from('assets').upsert(asset);
+                    if (error) console.error('Error Sync Supabase:', error);
+                } catch (e) {
+                    console.error('Supabase save exception:', e);
+                }
+            }
+            saveAssetsToLocalStorage();
+        }
 
-                    // Save local state & LocalStorage
-                    loggedInUser.value.username = newUsername;
-                    loggedInUser.value.password = newPassword;
-                    localStorage.setItem('admin_username', newUsername);
-                    localStorage.setItem('admin_password', newPassword);
+        async function deleteAssetFromDatabase(id) {
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('assets').delete().eq('id', id);
+                } catch (e) {
+                    console.error('Supabase delete error:', e);
+                }
+            }
+            assets = assets.filter(a => a.id !== id);
+            saveAssetsToLocalStorage();
+        }
 
-                    changePassMsg.value = { text: 'Username & Password berhasil diperbarui!', isError: false };
-                    setTimeout(() => {
-                        showChangePasswordModal.value = false;
-                        changePassForm.value.oldPassword = '';
-                        changePassForm.value.newPassword = '';
-                    }, 1200);
-                };
+        function getCalibrationStatus(dueDateStr) {
+            if (!dueDateStr) return { status: 'SAFE', label: 'Belum Diatur', badgeClass: 'bg-slate-100 text-slate-700' };
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(dueDateStr);
+            due.setHours(0, 0, 0, 0);
 
-                // Fetch data for remaining tables
-                const fetchOtherTablesFromSupabase = async () => {
-                    if (!supabaseClient) return;
-                    try {
-                        let { data: aData } = await supabaseClient.from('aset_alkes').select('*');
-                        if (aData) asetList.value = aData;
+            const diffTime = due - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                        let { data: jData } = await supabaseClient.from('jadwal_kir').select('*');
-                        if (jData) jadwalList.value = jData;
-
-                        let { data: mData } = await supabaseClient.from('mutasi_barang').select('*');
-                        if (mData) mutasiList.value = mData;
-                    } catch (err) {
-                        console.warn('Gagal memuat tabel tambahan:', err);
-                    }
-                };
-
-                // Save Supabase Configuration
-                const saveSupabaseConfig = async () => {
-                    localStorage.setItem('supabase_url', supabaseConfig.value.url.trim());
-                    localStorage.setItem('supabase_key', supabaseConfig.value.key.trim());
-                    await setupSupabase();
-                    if (isSupabaseConnected.value) {
-                        showConfigModal.value = false;
-                    }
-                };
-
-                const clearSupabaseConfig = () => {
-                    localStorage.removeItem('supabase_url');
-                    localStorage.removeItem('supabase_key');
-                    supabaseConfig.value = { url: '', key: '' };
-                    configError.value = '';
-                    showConfigModal.value = false;
-                    setupSupabase();
-                };
-
-                const clearSupabaseConfig = () => {
-                    localStorage.removeItem('supabase_url');
-                    localStorage.removeItem('supabase_key');
-                    supabaseConfig.value = { url: '', key: '' };
-                    showConfigModal.value = false;
-                    setupSupabase();
-                };
-
-                // Helper Lookups
-                const getRuanganNama = (id) => {
-                    const r = ruanganList.value.find(x => x.id == id);
-                    return r ? r.nama_ruangan : '-';
-                };
-
-                const getAsetNama = (id) => {
-                    const a = asetList.value.find(x => x.id == id);
-                    return a ? a.nama_barang : '-';
-                };
-
-                const getAsetKode = (id) => {
-                    const a = asetList.value.find(x => x.id == id);
-                    return a ? a.kode_aset : '-';
-                };
-
-                const countByKondisi = (kondisi) => {
-                    return asetList.value.filter(a => a.kondisi === kondisi).length;
-                };
-
-                const countAsetByRuangan = (ruanganId) => {
-                    return asetList.value.filter(a => a.ruangan_id == ruanganId).length;
-                };
-
-                const formatDate = (str) => {
-                    if (!str) return '-';
-                    const d = new Date(str);
-                    return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
-                };
-
-                const kondisiBadgeClass = (kondisi) => {
-                    if (kondisi === 'Baik') return 'bg-emerald-100 text-emerald-800';
-                    if (kondisi === 'Rusak Ringan') return 'bg-amber-100 text-amber-800';
-                    return 'bg-rose-100 text-rose-800';
-                };
-
-                const statusJadwalBadge = (status) => {
-                    if (status === 'Selesai') return 'bg-emerald-100 text-emerald-800';
-                    if (status === 'Terjadwal') return 'bg-blue-100 text-blue-800';
-                    return 'bg-amber-100 text-amber-800';
-                };
-
-                // Computed Properties
-                const selectedRuanganObj = computed(() => {
-                    return ruanganList.value.find(r => r.id == selectedRuanganFilter.value);
-                });
-
-                const filteredAsetForKIR = computed(() => {
-                    if (!selectedRuanganFilter.value) return asetList.value;
-                    return asetList.value.filter(a => a.ruangan_id == selectedRuanganFilter.value);
-                });
-
-                const filteredAsetList = computed(() => {
-                    if (!searchAset.value) return asetList.value;
-                    const q = searchAset.value.toLowerCase();
-                    return asetList.value.filter(a => 
-                        a.kode_aset.toLowerCase().includes(q) || 
-                        a.nama_barang.toLowerCase().includes(q) || 
-                        (a.merk_tipe && a.merk_tipe.toLowerCase().includes(q))
-                    );
-                });
-
-                const filteredRuanganTujuan = computed(() => {
-                    return ruanganList.value.filter(r => r.id != formMutasi.value.ruangan_asal_id);
-                });
-
-                const upcomingJadwal = computed(() => {
-                    return [...jadwalList.value].sort((a,b) => new Date(a.tanggal_jadwal) - new Date(b.tanggal_jadwal)).slice(0, 5);
-                });
-
-                const recentMutasi = computed(() => {
-                    return [...mutasiList.value].reverse().slice(0, 5);
-                });
-
-                // CRUD ASET
-                const openModalAset = (item = null) => {
-                    if (item) {
-                        formAset.value = { ...item };
-                    } else {
-                        formAset.value = { id: null, kode_aset: '', nama_barang: '', merk_tipe: '', no_seri: '', ruangan_id: ruanganList.value[0]?.id || '', tahun_perolehan: new Date().getFullYear(), kondisi: 'Baik' };
-                    }
-                    showModalAset.value = true;
-                };
-
-                const saveAset = async () => {
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        if (formAset.value.id) {
-                            await supabaseClient.from('aset_alkes').update(formAset.value).eq('id', formAset.value.id);
-                        } else {
-                            delete formAset.value.id;
-                            await supabaseClient.from('aset_alkes').insert([formAset.value]);
-                        }
-                        fetchFromSupabase();
-                    } else {
-                        if (formAset.value.id) {
-                            const idx = asetList.value.findIndex(a => a.id == formAset.value.id);
-                            if (idx !== -1) asetList.value[idx] = { ...formAset.value };
-                        } else {
-                            asetList.value.push({ ...formAset.value, id: Date.now().toString() });
-                        }
-                    }
-                    showModalAset.value = false;
-                };
-
-                const deleteAset = async (id) => {
-                    if (!confirm('Yakin ingin menghapus aset ini?')) return;
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        await supabaseClient.from('aset_alkes').delete().eq('id', id);
-                        fetchFromSupabase();
-                    } else {
-                        asetList.value = asetList.value.filter(a => a.id != id);
-                    }
-                };
-
-                // CRUD MUTASI
-                const openModalMutasi = () => {
-                    formMutasi.value = { aset_id: '', ruangan_asal_id: '', ruangan_tujuan_id: '', tanggal_mutasi: new Date().toISOString().substring(0,10), petugas: '', alasan: '' };
-                    showModalMutasi.value = true;
-                };
-
-                const onAsetMutasiSelect = () => {
-                    const aset = asetList.value.find(a => a.id == formMutasi.value.aset_id);
-                    if (aset) {
-                        formMutasi.value.ruangan_asal_id = aset.ruangan_id;
-                    }
-                };
-
-                const saveMutasi = async () => {
-                    const payload = { ...formMutasi.value };
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        await supabaseClient.from('mutasi_barang').insert([payload]);
-                        // Update aset's current room
-                        await supabaseClient.from('aset_alkes').update({ ruangan_id: payload.ruangan_tujuan_id }).eq('id', payload.aset_id);
-                        fetchFromSupabase();
-                    } else {
-                        mutasiList.value.push({ ...payload, id: Date.now().toString() });
-                        const targetAset = asetList.value.find(a => a.id == payload.aset_id);
-                        if (targetAset) targetAset.ruangan_id = payload.ruangan_tujuan_id;
-                    }
-                    showModalMutasi.value = false;
-                };
-
-                // CRUD JADWAL
-                const openModalJadwal = (item = null) => {
-                    if (item) {
-                        formJadwal.value = { ...item };
-                    } else {
-                        formJadwal.value = { id: null, aset_id: '', ruangan_id: '', tanggal_jadwal: new Date().toISOString().substring(0,10), petugas: '', status: 'Terjadwal', hasil_inspeksi: '' };
-                    }
-                    showModalJadwal.value = true;
-                };
-
-                const onAsetJadwalSelect = () => {
-                    const aset = asetList.value.find(a => a.id == formJadwal.value.aset_id);
-                    if (aset) formJadwal.value.ruangan_id = aset.ruangan_id;
-                };
-
-                const saveJadwal = async () => {
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        if (formJadwal.value.id) {
-                            await supabaseClient.from('jadwal_kir').update(formJadwal.value).eq('id', formJadwal.value.id);
-                        } else {
-                            delete formJadwal.value.id;
-                            await supabaseClient.from('jadwal_kir').insert([formJadwal.value]);
-                        }
-                        fetchFromSupabase();
-                    } else {
-                        if (formJadwal.value.id) {
-                            const idx = jadwalList.value.findIndex(j => j.id == formJadwal.value.id);
-                            if (idx !== -1) jadwalList.value[idx] = { ...formJadwal.value };
-                        } else {
-                            jadwalList.value.push({ ...formJadwal.value, id: Date.now().toString() });
-                        }
-                    }
-                    showModalJadwal.value = false;
-                };
-
-                const deleteJadwal = async (id) => {
-                    if (!confirm('Hapus jadwal ini?')) return;
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        await supabaseClient.from('jadwal_kir').delete().eq('id', id);
-                        fetchFromSupabase();
-                    } else {
-                        jadwalList.value = jadwalList.value.filter(j => j.id != id);
-                    }
-                };
-
-                // CRUD RUANGAN
-                const openModalRuangan = (item = null) => {
-                    if (item) {
-                        formRuangan.value = { ...item };
-                    } else {
-                        formRuangan.value = { id: null, kode_ruangan: '', nama_ruangan: '', lokasi_gedung: '', penanggung_jawab: '' };
-                    }
-                    showModalRuangan.value = true;
-                };
-
-                const saveRuangan = async () => {
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        if (formRuangan.value.id) {
-                            await supabaseClient.from('ruangan').update(formRuangan.value).eq('id', formRuangan.value.id);
-                        } else {
-                            delete formRuangan.value.id;
-                            await supabaseClient.from('ruangan').insert([formRuangan.value]);
-                        }
-                        fetchFromSupabase();
-                    } else {
-                        if (formRuangan.value.id) {
-                            const idx = ruanganList.value.findIndex(r => r.id == formRuangan.value.id);
-                            if (idx !== -1) ruanganList.value[idx] = { ...formRuangan.value };
-                        } else {
-                            ruanganList.value.push({ ...formRuangan.value, id: Date.now().toString() });
-                        }
-                    }
-                    showModalRuangan.value = false;
-                };
-
-                const deleteRuangan = async (id) => {
-                    if (!confirm('Hapus ruangan ini? Aset di ruangan ini akan tetap tersimpan.')) return;
-                    if (isSupabaseConnected.value && supabaseClient) {
-                        await supabaseClient.from('ruangan').delete().eq('id', id);
-                        fetchFromSupabase();
-                    } else {
-                        ruanganList.value = ruanganList.value.filter(r => r.id != id);
-                    }
-                };
-
-                // PRINT & EXPORT
-                const printKIR = () => {
-                    window.print();
-                };
-
-                const exportKIRExcel = () => {
-                    const data = filteredAsetForKIR.value.map((item, index) => ({
-                        'No': index + 1,
-                        'Kode Aset / NUP': item.kode_aset,
-                        'Nama Barang / ALKES': item.nama_barang,
-                        'Merk / Tipe': item.merk_tipe || '-',
-                        'No. Seri': item.no_seri || '-',
-                        'Tahun Perolehan': item.tahun_perolehan,
-                        'Kondisi': item.kondisi,
-                        'Ruangan': getRuanganNama(item.ruangan_id)
-                    }));
-
-                    const ws = XLSX.utils.json_to_sheet(data);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, "KIR_Ruangan");
-                    XLSX.writeFile(wb, `Laporan_KIR_${selectedRuanganObj.value ? selectedRuanganObj.value.kode_ruangan : 'Semua'}.xlsx`);
-                };
-
-                onMounted(() => {
-                    setupSupabase();
-                });
-
+            if (diffDays < 0) {
                 return {
-                    currentTab, isAdmin, isSupabaseConnected, showLoginModal, showConfigModal,
-                    showChangePasswordModal, loggedInUser, changePassForm, changePassMsg,
-                    configError, isConnecting,
-                    supabaseConfig, ruanganList, asetList, jadwalList, mutasiList,
-                    selectedRuanganFilter, searchAset, loginForm, loginError,
-                    showModalAset, showModalMutasi, showModalJadwal, showModalRuangan,
-                    formAset, formMutasi, formJadwal, formRuangan,
-                    navClass, handleLogin, logout, handleChangePassword, saveSupabaseConfig, clearSupabaseConfig,
-                    getRuanganNama, getAsetNama, getAsetKode, countByKondisi, countAsetByRuangan,
-                    formatDate, kondisiBadgeClass, statusJadwalBadge, selectedRuanganObj,
-                    filteredAsetForKIR, filteredAsetList, filteredRuanganTujuan, upcomingJadwal, recentMutasi,
-                    openModalAset, saveAset, deleteAset,
-                    openModalMutasi, onAsetMutasiSelect, saveMutasi,
-                    openModalJadwal, onAsetJadwalSelect, saveJadwal, deleteJadwal,
-                    openModalRuangan, saveRuangan, deleteRuangan,
-                    printKIR, exportKIRExcel
+                    status: 'EXPIRED',
+                    label: 'Kadaluarsa (' + Math.abs(diffDays) + ' hari)',
+                    days: diffDays,
+                    badgeClass: 'bg-rose-100 text-rose-800 border border-rose-200'
+                };
+            } else if (diffDays <= 30) {
+                return {
+                    status: 'DUE_SOON',
+                    label: 'Segera (' + diffDays + ' hari lagi)',
+                    days: diffDays,
+                    badgeClass: 'bg-amber-100 text-amber-800 border border-amber-200'
+                };
+            } else {
+                return {
+                    status: 'SAFE',
+                    label: 'Aman / Valid',
+                    days: diffDays,
+                    badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                 };
             }
-        }).mount('#app');
+        }
+
+        function renderAllViews() {
+            updateMetricsAndAlerts();
+            renderDashboardCharts();
+            renderPublicAssetTable();
+            renderNotificationTables();
+            renderAdminAssetTable();
+        }
+
+        function updateMetricsAndAlerts() {
+            let total = assets.length;
+            let safe = 0;
+            let dueSoon = 0;
+            let expired = 0;
+
+            assets.forEach(asset => {
+                const cal = getCalibrationStatus(asset.due_date);
+                if (cal.status === 'EXPIRED') expired++;
+                else if (cal.status === 'DUE_SOON') dueSoon++;
+                else safe++;
+            });
+
+            document.getElementById('stat-total-assets').textContent = total;
+            document.getElementById('stat-safe-calibration').textContent = safe;
+            document.getElementById('stat-due-soon-calibration').textContent = dueSoon;
+            document.getElementById('stat-expired-calibration').textContent = expired;
+
+            const totalUrgent = expired + dueSoon;
+            document.getElementById('badge-alert-count').textContent = totalUrgent;
+            document.getElementById('urgent-total-count').textContent = `${totalUrgent} Unit`;
+        }
+
+        let chartStatusInstance = null;
+        let chartKategoriInstance = null;
+
+        function renderDashboardCharts() {
+            let safe = 0, dueSoon = 0, expired = 0;
+            let categories = {};
+
+            assets.forEach(a => {
+                const cal = getCalibrationStatus(a.due_date);
+                if (cal.status === 'EXPIRED') expired++;
+                else if (cal.status === 'DUE_SOON') dueSoon++;
+                else safe++;
+
+                const cat = a.category || 'Lainnya';
+                categories[cat] = (categories[cat] || 0) + 1;
+            });
+
+            // Status Doughnut Chart
+            const ctxStatus = document.getElementById('chartStatusKalibrasi').getContext('2d');
+            if (chartStatusInstance) chartStatusInstance.destroy();
+            chartStatusInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Aman (Valid)', 'Segera Kalibrasi (<=30 Hari)', 'Kadaluarsa / Expired'],
+                    datasets: [{
+                        data: [safe, dueSoon, expired],
+                        backgroundColor: ['#10b981', '#f59e0b', '#f43f5e']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Kategori Bar Chart
+            const ctxKategori = document.getElementById('chartKategoriAset').getContext('2d');
+            if (chartKategoriInstance) chartKategoriInstance.destroy();
+            chartKategoriInstance = new Chart(ctxKategori, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{
+                        label: 'Jumlah Unit',
+                        data: Object.values(categories),
+                        backgroundColor: '#0284c7',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        function renderPublicAssetTable() {
+            const search = document.getElementById('public-search').value.toLowerCase();
+            const catFilter = document.getElementById('public-filter-category').value;
+            const calFilter = document.getElementById('public-filter-calibration').value;
+            const condFilter = document.getElementById('public-filter-condition').value;
+
+            const tbody = document.getElementById('public-asset-table-body');
+            tbody.innerHTML = '';
+
+            const filtered = assets.filter(a => {
+                const matchSearch = a.name.toLowerCase().includes(search) || 
+                                    a.code.toLowerCase().includes(search) || 
+                                    (a.brand && a.brand.toLowerCase().includes(search));
+                const matchCat = (catFilter === 'ALL') || (a.category === catFilter);
+                const calStatus = getCalibrationStatus(a.due_date).status;
+                const matchCal = (calFilter === 'ALL') || (calStatus === calFilter);
+                const matchCond = (condFilter === 'ALL') || (a.condition === condFilter);
+
+                return matchSearch && matchCat && matchCal && matchCond;
+            });
+
+            document.getElementById('public-table-info').textContent = `Menampilkan ${filtered.length} dari ${assets.length} aset`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Tidak ada data aset yang cocok dengan filter.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(a => {
+                const cal = getCalibrationStatus(a.due_date);
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-4 font-mono font-bold text-brand-700">${a.code}</td>
+                    <td class="p-4 font-semibold text-slate-900">${a.name}</td>
+                    <td class="p-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold">${a.category}</span><br><span class="text-xs text-slate-500">${a.location}</span></td>
+                    <td class="p-4 text-xs">${a.brand || '-'}<br><span class="text-slate-400">${a.serial ? 'SN: '+a.serial : ''}</span></td>
+                    <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded ${a.condition==='Baik'?'bg-emerald-50 text-emerald-700':a.condition==='Perbaikan'?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700'}">${a.condition}</span></td>
+                    <td class="p-4 text-xs">${a.last_calibrated || '-'}</td>
+                    <td class="p-4 font-bold ${cal.status==='EXPIRED'?'text-rose-600':cal.status==='DUE_SOON'?'text-amber-600':'text-emerald-700'}">${a.due_date}</td>
+                    <td class="p-4 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${cal.badgeClass}">${cal.label}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderNotificationTables() {
+            const expiredBody = document.getElementById('expired-assets-body');
+            const duesoonBody = document.getElementById('duesoon-assets-body');
+
+            expiredBody.innerHTML = '';
+            duesoonBody.innerHTML = '';
+
+            let expiredCount = 0;
+            let dueSoonCount = 0;
+
+            assets.forEach(a => {
+                const cal = getCalibrationStatus(a.due_date);
+
+                if (cal.status === 'EXPIRED') {
+                    expiredCount++;
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-rose-50/50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3 font-mono font-bold text-rose-700">${a.code}</td>
+                        <td class="p-3 font-bold text-slate-900">${a.name}</td>
+                        <td class="p-3 text-slate-600 text-xs">${a.location}</td>
+                        <td class="p-3 font-bold text-rose-700">${a.due_date}</td>
+                        <td class="p-3 text-xs font-bold text-rose-600">${Math.abs(cal.days)} Hari Lalu</td>
+                        <td class="p-3 text-right">
+                            <button onclick="openCalibrateModal('${a.id}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-sm">
+                                <i class="fa-solid fa-stamp"></i> Update Kalibrasi
+                            </button>
+                        </td>
+                    `;
+                    expiredBody.appendChild(tr);
+                } else if (cal.status === 'DUE_SOON') {
+                    dueSoonCount++;
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-amber-50/50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3 font-mono font-bold text-amber-700">${a.code}</td>
+                        <td class="p-3 font-bold text-slate-900">${a.name}</td>
+                        <td class="p-3 text-slate-600 text-xs">${a.location}</td>
+                        <td class="p-3 font-bold text-amber-700">${a.due_date}</td>
+                        <td class="p-3 text-xs font-bold text-amber-600">${cal.days} Hari Lagi</td>
+                        <td class="p-3 text-right">
+                            <button onclick="openCalibrateModal('${a.id}')" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-sm">
+                                <i class="fa-solid fa-stamp"></i> Update Kalibrasi
+                            </button>
+                        </td>
+                    `;
+                    duesoonBody.appendChild(tr);
+                }
+            });
+
+            if (expiredCount === 0) {
+                expiredBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada aset yang lewat jatuh tempo kalibrasi.</td></tr>`;
+            }
+            if (dueSoonCount === 0) {
+                duesoonBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada aset yang mendekati jatuh tempo dalam 30 hari.</td></tr>`;
+            }
+        }
+
+        function renderAdminAssetTable() {
+            if (!isAdminLoggedIn) return;
+
+            const search = document.getElementById('admin-search').value.toLowerCase();
+            const tbody = document.getElementById('admin-asset-table-body');
+            tbody.innerHTML = '';
+
+            const filtered = assets.filter(a => 
+                a.name.toLowerCase().includes(search) || 
+                a.code.toLowerCase().includes(search) ||
+                a.location.toLowerCase().includes(search)
+            );
+
+            filtered.forEach(a => {
+                const cal = getCalibrationStatus(a.due_date);
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-slate-800 text-xs">${a.code}</td>
+                    <td class="p-3 font-bold text-slate-900">${a.name}</td>
+                    <td class="p-3 text-xs">${a.category}</td>
+                    <td class="p-3 text-xs text-slate-600">${a.location}</td>
+                    <td class="p-3 text-xs">${a.condition}</td>
+                    <td class="p-3 text-xs font-bold">${a.due_date}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${cal.badgeClass}">${cal.label}</span></td>
+                    <td class="p-3 text-right space-x-1">
+                        <button onclick="openCalibrateModal('${a.id}')" title="Catat Kalibrasi" class="px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-stamp"></i>
+                        </button>
+                        <button onclick="editAssetModal('${a.id}')" title="Edit Aset" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deleteAssetConfirm('${a.id}')" title="Hapus Aset" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openAssetFormModal() {
+            document.getElementById('modal-asset-title').innerHTML = `<i class="fa-solid fa-box text-brand-400"></i> Tambah Data Aset RSUD`;
+            document.getElementById('form-asset').reset();
+            document.getElementById('asset-id').value = '';
+            
+            // Set default date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('field-last-calibrated').value = today;
+            autoCalculateNextCalibration();
+
+            document.getElementById('modal-asset-form').classList.remove('hidden');
+        }
+
+        function closeAssetFormModal() {
+            document.getElementById('modal-asset-form').classList.add('hidden');
+        }
+
+        function autoCalculateNextCalibration() {
+            const lastCal = document.getElementById('field-last-calibrated').value;
+            const months = parseInt(document.getElementById('field-interval-months').value) || 12;
+
+            if (lastCal) {
+                const date = new Date(lastCal);
+                date.setMonth(date.getMonth() + months);
+                document.getElementById('field-due-date').value = date.toISOString().split('T')[0];
+            }
+        }
+
+        function editAssetModal(id) {
+            const a = assets.find(item => item.id === id);
+            if (!a) return;
+
+            document.getElementById('modal-asset-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400"></i> Edit Data Aset: ${a.code}`;
+            document.getElementById('asset-id').value = a.id;
+            document.getElementById('field-code').value = a.code;
+            document.getElementById('field-name').value = a.name;
+            document.getElementById('field-category').value = a.category;
+            document.getElementById('field-location').value = a.location;
+            document.getElementById('field-brand').value = a.brand || '';
+            document.getElementById('field-serial').value = a.serial || '';
+            document.getElementById('field-condition').value = a.condition || 'Baik';
+            document.getElementById('field-interval-months').value = a.interval_months || 12;
+            document.getElementById('field-last-calibrated').value = a.last_calibrated || '';
+            document.getElementById('field-due-date').value = a.due_date;
+            document.getElementById('field-notes').value = a.notes || '';
+
+            document.getElementById('modal-asset-form').classList.remove('hidden');
+        }
+
+        async function handleAssetFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('asset-id').value || 'ast_' + Date.now();
+            
+            const newAsset = {
+                id: id,
+                code: document.getElementById('field-code').value.trim(),
+                name: document.getElementById('field-name').value.trim(),
+                category: document.getElementById('field-category').value,
+                location: document.getElementById('field-location').value.trim(),
+                brand: document.getElementById('field-brand').value.trim(),
+                serial: document.getElementById('field-serial').value.trim(),
+                condition: document.getElementById('field-condition').value,
+                interval_months: parseInt(document.getElementById('field-interval-months').value),
+                last_calibrated: document.getElementById('field-last-calibrated').value,
+                due_date: document.getElementById('field-due-date').value,
+                notes: document.getElementById('field-notes').value.trim()
+            };
+
+            const existingIdx = assets.findIndex(a => a.id === id);
+            if (existingIdx >= 0) {
+                assets[existingIdx] = newAsset;
+            } else {
+                assets.unshift(newAsset);
+            }
+
+            await syncAssetToDatabase(newAsset);
+            closeAssetFormModal();
+            renderAllViews();
+            showToast('Data aset berhasil disimpan!');
+        }
+
+        async function deleteAssetConfirm(id) {
+            const a = assets.find(item => item.id === id);
+            if (!a) return;
+
+            if (confirm(`Apakah Anda yakin ingin menghapus aset "${a.name}" (${a.code})?`)) {
+                await deleteAssetFromDatabase(id);
+                renderAllViews();
+                showToast('Aset telah dihapus dari sistem.', 'info');
+            }
+        }
+
+        function openCalibrateModal(id) {
+            if (!isAdminLoggedIn) {
+                openLoginModal();
+                return;
+            }
+
+            const a = assets.find(item => item.id === id);
+            if (!a) return;
+
+            document.getElementById('calib-asset-id').value = a.id;
+            document.getElementById('calib-asset-name-display').textContent = a.name;
+            document.getElementById('calib-asset-code-display').textContent = `${a.code} - ${a.location}`;
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('calib-date-performed').value = today;
+
+            // Compute default next due
+            const months = a.interval_months || 12;
+            const nextDate = new Date();
+            nextDate.setMonth(nextDate.getMonth() + months);
+            document.getElementById('calib-next-due').value = nextDate.toISOString().split('T')[0];
+
+            document.getElementById('modal-calibrate-action').classList.remove('hidden');
+        }
+
+        function closeCalibrateModal() {
+            document.getElementById('modal-calibrate-action').classList.add('hidden');
+        }
+
+        async function handleCalibrateSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('calib-asset-id').value;
+            const a = assets.find(item => item.id === id);
+            if (!a) return;
+
+            a.last_calibrated = document.getElementById('calib-date-performed').value;
+            a.due_date = document.getElementById('calib-next-due').value;
+            
+            const tester = document.getElementById('calib-tester').value;
+            const cert = document.getElementById('calib-certificate-no').value;
+            if (tester || cert) {
+                a.notes = `Kalibrasi Terakhir (${a.last_calibrated}): ${tester || 'Internal'} - Sertifikat: ${cert || '-'}`;
+            }
+
+            await syncAssetToDatabase(a);
+            closeCalibrateModal();
+            renderAllViews();
+            showToast(`Sertifikasi kalibrasi untuk ${a.code} berhasil diperbarui!`);
+        }
+
+        function checkAdminSession() {
+            const session = sessionStorage.getItem('RSUD_ADMIN_SESSION');
+            if (session === 'true') {
+                isAdminLoggedIn = true;
+            }
+            updateAdminUI();
+        }
+
+        function updateAdminUI() {
+            const container = document.getElementById('auth-button-container');
+            const lockScreen = document.getElementById('admin-lock-screen');
+            const activePanel = document.getElementById('admin-active-panel');
+
+            if (isAdminLoggedIn) {
+                container.innerHTML = `
+                    <button onclick="handleLogout()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition border border-rose-900/30">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="hidden sm:inline">Logout Admin</span>
+                    </button>
+                `;
+                lockScreen.classList.add('hidden');
+                activePanel.classList.remove('hidden');
+            } else {
+                container.innerHTML = `
+                    <button onclick="openLoginModal()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition shadow-sm">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Login Admin</span>
+                    </button>
+                `;
+                lockScreen.classList.remove('hidden');
+                activePanel.classList.add('hidden');
+            }
+        }
+
+        function openLoginModal() {
+            document.getElementById('modal-login').classList.remove('hidden');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('modal-login').classList.add('hidden');
+        }
+
+        function handleLoginSubmit(e) {
+            e.preventDefault();
+            const pass = document.getElementById('login-password').value;
+            if (pass === 'admin123') {
+                isAdminLoggedIn = true;
+                sessionStorage.setItem('RSUD_ADMIN_SESSION', 'true');
+                closeLoginModal();
+                updateAdminUI();
+                renderAdminAssetTable();
+                showToast('Login Admin berhasil!', 'success');
+                switchTab('admin');
+            } else {
+                showToast('Password admin salah!', 'error');
+            }
+        }
+
+        function handleLogout() {
+            isAdminLoggedIn = false;
+            sessionStorage.removeItem('RSUD_ADMIN_SESSION');
+            updateAdminUI();
+            showToast('Anda telah logout dari mode Admin.', 'info');
+            switchTab('dashboard');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const views = ['dashboard', 'assets', 'notifications', 'admin'];
+            
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const btn = document.getElementById(`tab-btn-${v}`);
+                if (v === tab) {
+                    el.classList.remove('hidden');
+                    btn.classList.add('bg-brand-600', 'text-white');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    el.classList.add('hidden');
+                    btn.classList.remove('bg-brand-600', 'text-white');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+
+            if (tab === 'dashboard') renderDashboardCharts();
+        }
+
+        function openConfigModal() {
+            document.getElementById('modal-supabase-config').classList.remove('hidden');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('modal-supabase-config').classList.add('hidden');
+        }
+
+        function saveSupabaseConfig() {
+            const url = document.getElementById('cfg-supabase-url').value.trim();
+            const key = document.getElementById('cfg-supabase-key').value.trim();
+
+            if (url && key) {
+                localStorage.setItem('RSUD_SUPABASE_URL', url);
+                localStorage.setItem('RSUD_SUPABASE_KEY', key);
+                initSupabaseFromStorage();
+                loadAssetsData().then(() => {
+                    renderAllViews();
+                    closeConfigModal();
+                    showToast('Koneksi Supabase disimpan!', 'success');
+                });
+            } else {
+                showToast('Harap isi URL & Key Supabase!', 'error');
+            }
+        }
+
+        function resetToLocalDB() {
+            localStorage.removeItem('RSUD_SUPABASE_URL');
+            localStorage.removeItem('RSUD_SUPABASE_KEY');
+            supabaseClient = null;
+            document.getElementById('db-warning-banner').classList.remove('hidden');
+            document.getElementById('footer-db-status').innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Local Storage`;
+            closeConfigModal();
+            showToast('Menggunakan penyimpanan lokal browser.', 'info');
+        }
+
+        function copySQLSchema() {
+            const sqlText = `CREATE TABLE assets (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  code TEXT UNIQUE NOT NULL,\n  name TEXT NOT NULL,\n  category TEXT NOT NULL,\n  location TEXT NOT NULL,\n  brand TEXT,\n  serial TEXT,\n  condition TEXT DEFAULT 'Baik',\n  interval_months INT DEFAULT 12,\n  last_calibrated DATE,\n  due_date DATE NOT NULL,\n  notes TEXT,\n  created_at TIMESTAMPTZ DEFAULT now()\n);\n\nALTER TABLE assets ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Public Read Access" ON assets FOR SELECT USING (true);\nCREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);`;
+            
+            const el = document.createElement('textarea');
+            el.value = sqlText;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Skrip SQL disalin ke clipboard!', 'success');
+        }
+
+        function openGithubHelpModal() {
+            document.getElementById('modal-github-help').classList.remove('hidden');
+        }
+
+        function closeGithubHelpModal() {
+            document.getElementById('modal-github-help').classList.add('hidden');
+        }
+
+        function exportDataCSV() {
+            let csv = 'Kode Aset,Nama Alat,Kategori,Lokasi,Merk,No Seri,Kondisi,Tgl Kalibrasi Terakhir,Jatuh Tempo,Status\n';
+            assets.forEach(a => {
+                const cal = getCalibrationStatus(a.due_date);
+                csv += `"${a.code}","${a.name}","${a.category}","${a.location}","${a.brand||''}","${a.serial||''}","${a.condition}","${a.last_calibrated||''}","${a.due_date}","${cal.label}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Laporan_Aset_Kalibrasi_RSUD_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Laporan CSV berhasil diunduh.');
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('custom-toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.textContent = msg;
+
+            if (type === 'error') {
+                toastIcon.className = "fa-solid fa-circle-xmark text-rose-500 text-lg";
+            } else if (type === 'info') {
+                toastIcon.className = "fa-solid fa-circle-info text-sky-400 text-lg";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
     </script>
 </body>
 </html>
