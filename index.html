@@ -80,10 +80,14 @@
 
                     <!-- User Actions / Login Info -->
                     <div class="flex items-center space-x-3">
-                        <div v-if="isAdmin" class="flex items-center space-x-3">
+                        <div v-if="isAdmin" class="flex items-center space-x-2 sm:space-x-3">
                             <span class="hidden sm:inline-block text-xs bg-brand-700 px-2.5 py-1 rounded-md border border-brand-600 font-medium">
-                                <i class="fa-solid fa-user-shield mr-1"></i> Admin
+                                <i class="fa-solid fa-user-shield mr-1"></i> {{ loggedInUser.username }}
                             </span>
+                            <button @click="showChangePasswordModal = true" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow flex items-center space-x-1" title="Ubah Password Admin">
+                                <i class="fa-solid fa-key"></i>
+                                <span class="hidden md:inline">Ganti Password</span>
+                            </button>
                             <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
                                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar
                             </button>
@@ -591,8 +595,48 @@
                     </button>
                 </form>
                 <p class="text-[11px] text-center text-slate-400 mt-4">
-                    Demo Preset: Username: <b>admin</b> | Pass: <b>admin123</b>
+                    Kredensial Default: Username: <b>admin</b> | Pass: <b>admin123</b>
                 </p>
+            </div>
+        </div>
+
+        <!-- MODAL GANTI PASSWORD ADMIN -->
+        <div v-if="showChangePasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
+                <button @click="showChangePasswordModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-xl mb-3">
+                        <i class="fa-solid fa-key"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800">Ganti Password Admin</h3>
+                    <p class="text-xs text-slate-500 mt-1">Ubah username atau password akun Anda</p>
+                </div>
+
+                <form @submit.prevent="handleChangePassword" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Username Baru</label>
+                        <input v-model="changePassForm.newUsername" type="text" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-brand-500 focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Password Lama</label>
+                        <input v-model="changePassForm.oldPassword" type="password" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-brand-500 focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Password Baru</label>
+                        <input v-model="changePassForm.newPassword" type="password" required placeholder="Minimal 6 karakter" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:ring-brand-500 focus:border-brand-500">
+                    </div>
+
+                    <div v-if="changePassMsg.text" :class="changePassMsg.isError ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'" class="p-3 text-xs rounded-xl font-medium">
+                        {{ changePassMsg.text }}
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
+                        <button type="submit" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow">Perbarui Akun</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -791,21 +835,33 @@
                 <h3 class="text-lg font-bold text-slate-800 mb-2">Konfigurasi Database Supabase</h3>
                 <p class="text-xs text-slate-500 mb-4">Masukkan Supabase URL & Anon Key dari Dashboard Supabase Anda.</p>
 
+                <!-- Feedback Status / Error Message -->
+                <div v-if="configError" class="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start space-x-2">
+                    <i class="fa-solid fa-triangle-exclamation text-sm mt-0.5"></i>
+                    <div>
+                        <p class="font-bold">Koneksi Supabase Gagal:</p>
+                        <p class="mt-0.5 text-[11px] leading-relaxed">{{ configError }}</p>
+                    </div>
+                </div>
+
                 <form @submit.prevent="saveSupabaseConfig" class="space-y-4 text-xs">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Supabase URL</label>
-                        <input v-model="supabaseConfig.url" type="text" placeholder="https://xyz...supabase.co" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        <input v-model="supabaseConfig.url" type="text" placeholder="https://xyz...supabase.co" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Supabase Anon Key</label>
-                        <input v-model="supabaseConfig.key" type="password" placeholder="eyJhbG..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        <input v-model="supabaseConfig.key" type="password" placeholder="eyJhbG..." required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
                     </div>
 
                     <div class="pt-2 flex justify-between items-center">
                         <button type="button" @click="clearSupabaseConfig" class="text-rose-600 text-xs hover:underline font-semibold">Gunakan Mode Demo</button>
                         <div class="space-x-2">
                             <button type="button" @click="showConfigModal = false" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl">Batal</button>
-                            <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan & Hubungkan</button>
+                            <button type="submit" :disabled="isConnecting" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-400 text-white rounded-xl font-bold shadow flex items-center space-x-2 inline-flex">
+                                <i v-if="isConnecting" class="fa-solid fa-spinner animate-spin"></i>
+                                <span>{{ isConnecting ? 'Menguji...' : 'Simpan & Hubungkan' }}</span>
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -829,118 +885,61 @@
                 const isAdmin = ref(false);
                 const isSupabaseConnected = ref(false);
                 const showLoginModal = ref(false);
+                const showChangePasswordModal = ref(false);
                 const showConfigModal = ref(false);
+                const configError = ref('');
+                const isConnecting = ref(false);
 
-                // Supabase Config
-                const supabaseConfig = ref({
-                    url: localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bWpkbHhuam95enp2enBtaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwMTU2NjgsImV4cCI6MjEwNTU5MTY2OH0.i8LtB72RGso_--VhWNQVpjFr44dHK_pYpRqsuMkCQ4c') || '',
-                    key: localStorage.getItem('https://wzmjdlxnjoyzzvzpmhqj.supabase.co') || ''
+                // Logged In Admin Details
+                const loggedInUser = ref({
+                    id: null,
+                    username: localStorage.getItem('admin_username') || 'admin',
+                    password: localStorage.getItem('admin_password') || 'admin123'
                 });
-                let supabaseClient = null;
 
-                // Data Collections
-                const ruanganList = ref([]);
-                const asetList = ref([]);
-                const jadwalList = ref([]);
-                const mutasiList = ref([]);
-
-                // Filters & Search
-                const selectedRuanganFilter = ref('');
-                const searchAset = ref('');
-
-                // Login Form
+                // Forms
                 const loginForm = ref({ email: '', password: '' });
                 const loginError = ref('');
 
-                // Modal States
-                const showModalAset = ref(false);
-                const showModalMutasi = ref(false);
-                const showModalJadwal = ref(false);
-                const showModalRuangan = ref(false);
+                const changePassForm = ref({
+                    newUsername: loggedInUser.value.username,
+                    oldPassword: '',
+                    newPassword: ''
+                });
+                const changePassMsg = ref({ text: '', isError: false });
 
-                // Forms Data
-                const formAset = ref({ id: null, kode_aset: '', nama_barang: '', merk_tipe: '', no_seri: '', ruangan_id: '', tahun_perolehan: new Date().getFullYear(), kondisi: 'Baik' });
-                const formMutasi = ref({ aset_id: '', ruangan_asal_id: '', ruangan_tujuan_id: '', tanggal_mutasi: new Date().toISOString().substring(0,10), petugas: '', alasan: '' });
-                const formJadwal = ref({ id: null, aset_id: '', ruangan_id: '', tanggal_jadwal: new Date().toISOString().substring(0,10), petugas: '', status: 'Terjadwal', hasil_inspeksi: '' });
-                const formRuangan = ref({ id: null, kode_ruangan: '', nama_ruangan: '', lokasi_gedung: '', penanggung_jawab: '' });
+                const configError = ref('');
+                // Handle Login Admin
+                const handleLogin = async () => {
+                    loginError.value = '';
+                    const inputUser = loginForm.value.email.trim();
+                    const inputPass = loginForm.value.password.trim();
 
-                // Initialize Mock Sample Data (Fallback mode)
-                const initMockData = () => {
-                    ruanganList.value = [
-                        { id: '1', kode_ruangan: 'R-IGD-01', nama_ruangan: 'Instalasi Gawat Darurat (IGD)', lokasi_gedung: 'Gedung A Utama LT. 1', penanggung_jawab: 'Ns. Ratna, S.Kep' },
-                        { id: '2', kode_ruangan: 'R-ICU-02', nama_ruangan: 'Intensive Care Unit (ICU)', lokasi_gedung: 'Gedung B LT. 2', penanggung_jawab: 'dr. Ahmad Sp.An' },
-                        { id: '3', kode_ruangan: 'R-POLI-01', nama_ruangan: 'Poliklinik Anak', lokasi_gedung: 'Gedung A LT. 2', penanggung_jawab: 'Siti Rahma, Amd.Kep' },
-                        { id: '4', kode_ruangan: 'R-OK-01', nama_ruangan: 'Kamar Operasi (OK 1)', lokasi_gedung: 'Gedung C LT. 3', penanggung_jawab: 'Hendra, S.ST' }
-                    ];
-
-                    asetList.value = [
-                        { id: '101', kode_aset: 'ALK-IGD-001', nama_barang: 'Patient Monitor 5 Parameter', merk_tipe: 'Mindray uMEC10', no_seri: 'SN9872123', ruangan_id: '1', tahun_perolehan: 2022, kondisi: 'Baik' },
-                        { id: '102', kode_aset: 'ALK-ICU-002', nama_barang: 'Ventilator Transport', merk_tipe: 'Hamilton T1', no_seri: 'SN665421', ruangan_id: '2', tahun_perolehan: 2021, kondisi: 'Baik' },
-                        { id: '103', kode_aset: 'ALK-IGD-003', nama_barang: 'Defibrillator Biphasic', merk_tipe: 'Zoll M Series', no_seri: 'SN120098', ruangan_id: '1', tahun_perolehan: 2020, kondisi: 'Rusak Ringan' },
-                        { id: '104', kode_aset: 'ALK-POLI-004', nama_barang: 'Infuse Pump', merk_tipe: 'Terumo TE-171', no_seri: 'SN443211', ruangan_id: '3', tahun_perolehan: 2023, kondisi: 'Baik' }
-                    ];
-
-                    jadwalList.value = [
-                        { id: '201', aset_id: '101', ruangan_id: '1', tanggal_jadwal: '2026-10-15', petugas: 'Budi (Elektromedis)', status: 'Terjadwal', hasil_inspeksi: 'Inspeksi berkala semester II' },
-                        { id: '202', aset_id: '103', ruangan_id: '1', tanggal_jadwal: '2026-10-05', petugas: 'Andi (IPSRS)', status: 'Menunggu Sparepart', hasil_inspeksi: 'Pengantian pad baterai cadangan' }
-                    ];
-
-                    mutasiList.value = [
-                        { id: '301', aset_id: '102', ruangan_asal_id: '1', ruangan_tujuan_id: '2', tanggal_mutasi: '2026-09-20', petugas: 'Agus IPSRS', alasan: 'Kebutuhan urgent pasien ICU' }
-                    ];
-                };
-
-                // Initialize Supabase Client
-                const setupSupabase = () => {
-                    if (supabaseConfig.value.url && supabaseConfig.value.key) {
+                    if (isSupabaseConnected.value && supabaseClient) {
                         try {
-                            supabaseClient = supabase.createClient(supabaseConfig.value.url, supabaseConfig.value.key);
-                            isSupabaseConnected.value = true;
-                            fetchFromSupabase();
+                            const { data, error } = await supabaseClient
+                                .from('admin_users')
+                                .select('*')
+                                .eq('username', inputUser)
+                                .eq('password', inputPass)
+                                .single();
+
+                            if (data && !error) {
+                                isAdmin.value = true;
+                                loggedInUser.value = { id: data.id, username: data.username, password: data.password };
+                                showLoginModal.value = false;
+                                loginForm.value = { email: '', password: '' };
+                                return;
+                            }
                         } catch (e) {
-                            console.error('Supabase connection failed:', e);
-                            isSupabaseConnected.value = false;
-                            initMockData();
+                            console.warn('Cek admin_users gagal, mencoba fallback:', e);
                         }
-                    } else {
-                        isSupabaseConnected.value = false;
-                        initMockData();
                     }
-                };
 
-                // Fetch Data from Supabase
-                const fetchFromSupabase = async () => {
-                    if (!supabaseClient) return;
-                    try {
-                        let { data: rData } = await supabaseClient.from('ruangan').select('*');
-                        if (rData) ruanganList.value = rData;
-
-                        let { data: aData } = await supabaseClient.from('aset_alkes').select('*');
-                        if (aData) asetList.value = aData;
-
-                        let { data: jData } = await supabaseClient.from('jadwal_kir').select('*');
-                        if (jData) jadwalList.value = jData;
-
-                        let { data: mData } = await supabaseClient.from('mutasi_barang').select('*');
-                        if (mData) mutasiList.value = mData;
-                    } catch (err) {
-                        console.warn('Gagal load dari Supabase, pakai data lokal/demo', err);
-                    }
-                };
-
-                // Navigation class helper
-                const navClass = (tab) => {
-                    return currentTab.value === tab 
-                        ? 'border-brand-500 text-brand-500 font-bold bg-brand-900/40' 
-                        : 'border-transparent text-slate-300 hover:text-white hover:border-brand-400';
-                };
-
-                // Login Handler
-                const handleLogin = () => {
-                    if (loginForm.value.email === 'admin' && loginForm.value.password === 'admin123') {
+                    // Fallback / Local Auth Check
+                    if (inputUser === loggedInUser.value.username && inputPass === loggedInUser.value.password) {
                         isAdmin.value = true;
                         showLoginModal.value = false;
-                        loginError.value = '';
                         loginForm.value = { email: '', password: '' };
                     } else {
                         loginError.value = 'Username atau password salah!';
@@ -952,10 +951,87 @@
                     currentTab.value = 'dashboard';
                 };
 
+                // Handle Change Password Admin
+                const handleChangePassword = async () => {
+                    changePassMsg.value = { text: '', isError: false };
+
+                    if (changePassForm.value.oldPassword !== loggedInUser.value.password) {
+                        changePassMsg.value = { text: 'Password lama tidak sesuai!', isError: true };
+                        return;
+                    }
+
+                    if (changePassForm.value.newPassword.length < 4) {
+                        changePassMsg.value = { text: 'Password baru minimal 4 karakter!', isError: true };
+                        return;
+                    }
+
+                    const newUsername = changePassForm.value.newUsername.trim();
+                    const newPassword = changePassForm.value.newPassword.trim();
+
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        try {
+                            if (loggedInUser.value.id) {
+                                await supabaseClient
+                                    .from('admin_users')
+                                    .update({ username: newUsername, password: newPassword })
+                                    .eq('id', loggedInUser.value.id);
+                            } else {
+                                await supabaseClient
+                                    .from('admin_users')
+                                    .update({ username: newUsername, password: newPassword })
+                                    .eq('username', loggedInUser.value.username);
+                            }
+                        } catch (err) {
+                            console.error('Gagal update admin di Supabase:', err);
+                        }
+                    }
+
+                    // Save local state & LocalStorage
+                    loggedInUser.value.username = newUsername;
+                    loggedInUser.value.password = newPassword;
+                    localStorage.setItem('admin_username', newUsername);
+                    localStorage.setItem('admin_password', newPassword);
+
+                    changePassMsg.value = { text: 'Username & Password berhasil diperbarui!', isError: false };
+                    setTimeout(() => {
+                        showChangePasswordModal.value = false;
+                        changePassForm.value.oldPassword = '';
+                        changePassForm.value.newPassword = '';
+                    }, 1200);
+                };
+
+                // Fetch data for remaining tables
+                const fetchOtherTablesFromSupabase = async () => {
+                    if (!supabaseClient) return;
+                    try {
+                        let { data: aData } = await supabaseClient.from('aset_alkes').select('*');
+                        if (aData) asetList.value = aData;
+
+                        let { data: jData } = await supabaseClient.from('jadwal_kir').select('*');
+                        if (jData) jadwalList.value = jData;
+
+                        let { data: mData } = await supabaseClient.from('mutasi_barang').select('*');
+                        if (mData) mutasiList.value = mData;
+                    } catch (err) {
+                        console.warn('Gagal memuat tabel tambahan:', err);
+                    }
+                };
+
                 // Save Supabase Configuration
-                const saveSupabaseConfig = () => {
-                    localStorage.setItem('supabase_url', supabaseConfig.value.url);
-                    localStorage.setItem('supabase_key', supabaseConfig.value.key);
+                const saveSupabaseConfig = async () => {
+                    localStorage.setItem('https://wzmjdlxnjoyzzvzpmhqj.supabase.co', supabaseConfig.value.url.trim());
+                    localStorage.setItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bWpkbHhuam95enp2enBtaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwMTU2NjgsImV4cCI6MjEwNTU5MTY2OH0.i8LtB72RGso_--VhWNQVpjFr44dHK_pYpRqsuMkCQ4c', supabaseConfig.value.key.trim());
+                    await setupSupabase();
+                    if (isSupabaseConnected.value) {
+                        showConfigModal.value = false;
+                    }
+                };
+
+                const clearSupabaseConfig = () => {
+                    localStorage.removeItem('supabase_url');
+                    localStorage.removeItem('supabase_key');
+                    supabaseConfig.value = { url: '', key: '' };
+                    configError.value = '';
                     showConfigModal.value = false;
                     setupSupabase();
                 };
@@ -1224,11 +1300,13 @@
 
                 return {
                     currentTab, isAdmin, isSupabaseConnected, showLoginModal, showConfigModal,
+                    showChangePasswordModal, loggedInUser, changePassForm, changePassMsg,
+                    configError, isConnecting,
                     supabaseConfig, ruanganList, asetList, jadwalList, mutasiList,
                     selectedRuanganFilter, searchAset, loginForm, loginError,
                     showModalAset, showModalMutasi, showModalJadwal, showModalRuangan,
                     formAset, formMutasi, formJadwal, formRuangan,
-                    navClass, handleLogin, logout, saveSupabaseConfig, clearSupabaseConfig,
+                    navClass, handleLogin, logout, handleChangePassword, saveSupabaseConfig, clearSupabaseConfig,
                     getRuanganNama, getAsetNama, getAsetKode, countByKondisi, countAsetByRuangan,
                     formatDate, kondisiBadgeClass, statusJadwalBadge, selectedRuanganObj,
                     filteredAsetForKIR, filteredAsetList, filteredRuanganTujuan, upcomingJadwal, recentMutasi,
