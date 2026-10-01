@@ -1,1 +1,1245 @@
-Sistem Informasi KIR & Aset Ruangan
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem KIR Ruangan & Mutasi Aset ALKES</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Vue.js 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Supabase JS Client v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+            .print-card { border: none !important; shadow: none !important; padding: 0 !important; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div id="app" class="flex flex-col flex-1">
+
+        <!-- HEADER & NAVIGATION -->
+        <header class="bg-brand-900 text-white shadow-md sticky top-0 z-30 no-print">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    
+                    <!-- Logo & Title -->
+                    <div class="flex items-center space-x-3 cursor-pointer" @click="currentTab = 'dashboard'">
+                        <div class="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center font-bold text-xl text-white shadow-inner">
+                            <i class="fa-solid font-bold fa-notes-medical"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg leading-tight">SIM-KIR ALKES</h1>
+                            <p class="text-xs text-brand-100">Kartu Inventaris Ruangan & Mutasi Aset</p>
+                        </div>
+                    </div>
+
+                    <!-- Connection Status Badge -->
+                    <div class="hidden md:flex items-center space-x-2 text-xs bg-brand-800/80 px-3 py-1.5 rounded-full border border-brand-700">
+                        <span class="w-2 h-2 rounded-full" :class="isSupabaseConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'"></span>
+                        <span>{{ isSupabaseConnected ? 'Terhubung Supabase' : 'Mode Demo / Lokal' }}</span>
+                        <button @click="showConfigModal = true" class="ml-2 underline text-brand-100 hover:text-white">
+                            <i class="fa-solid fa-gear"></i>
+                        </button>
+                    </div>
+
+                    <!-- User Actions / Login Info -->
+                    <div class="flex items-center space-x-3">
+                        <div v-if="isAdmin" class="flex items-center space-x-3">
+                            <span class="hidden sm:inline-block text-xs bg-brand-700 px-2.5 py-1 rounded-md border border-brand-600 font-medium">
+                                <i class="fa-solid fa-user-shield mr-1"></i> Admin
+                            </span>
+                            <button @click="logout" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
+                                <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar
+                            </button>
+                        </div>
+                        <div v-else>
+                            <button @click="showLoginModal = true" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow flex items-center space-x-1">
+                                <i class="fa-solid fa-lock text-xs"></i>
+                                <span>Login Admin</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Navigation Links -->
+            <nav class="bg-brand-800 border-t border-brand-700/60 overflow-x-auto no-scrollbar">
+                <div class="max-w-7xl mx-auto px-4 flex space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium">
+                    <!-- Public Menu -->
+                    <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-pie"></i><span>Dashboard Utama</span>
+                    </button>
+                    <button @click="currentTab = 'public-kir'" :class="navClass('public-kir')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2">
+                        <i class="fa-solid fa-clipboard-list"></i><span>Laporan KIR Ruangan</span>
+                    </button>
+                    <button @click="currentTab = 'jadwal-kir'" :class="navClass('jadwal-kir')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2">
+                        <i class="fa-solid fa-calendar-check"></i><span>Jadwal KIR ALKES</span>
+                    </button>
+
+                    <!-- Admin Only Menu -->
+                    <template v-if="isAdmin">
+                        <span class="py-3 px-1 text-brand-500/50">|</span>
+                        <button @click="currentTab = 'data-aset'" :class="navClass('data-aset')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2 text-amber-200 hover:text-white">
+                            <i class="fa-solid fa-boxes-stacked"></i><span>Kelola Aset</span>
+                        </button>
+                        <button @click="currentTab = 'mutasi'" :class="navClass('mutasi')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2 text-amber-200 hover:text-white">
+                            <i class="fa-solid fa-arrow-right-arrow-left"></i><span>Mutasi Ruangan</span>
+                        </button>
+                        <button @click="currentTab = 'data-ruangan'" :class="navClass('data-ruangan')" class="py-3 px-3 border-b-2 whitespace-nowrap flex items-center space-x-2 text-amber-200 hover:text-white">
+                            <i class="fa-solid fa-hospital-user"></i><span>Data Ruangan</span>
+                        </button>
+                    </template>
+                </div>
+            </nav>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+            <!-- TAB 1: DASHBOARD UTAMA (PUBLIC & SUMMARY) -->
+            <section v-if="currentTab === 'dashboard'" class="space-y-6">
+                <!-- Banner Welcome -->
+                <div class="bg-gradient-to-r from-brand-700 to-brand-900 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-1">Sistem Informasi Kartu Inventaris Ruangan (KIR)</h2>
+                        <p class="text-brand-100 text-sm max-w-2xl">
+                            Monitoring ketersediaan, penjadwalan pemeliharaan berkala, serta rekapitulasi kondisi Alat Kesehatan (ALKES) di setiap unit dan ruangan rumah sakit/puskesmas.
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="currentTab = 'public-kir'" class="bg-white text-brand-900 font-semibold text-xs px-4 py-2.5 rounded-xl shadow hover:bg-brand-50 transition">
+                            <i class="fa-solid fa-eye mr-1"></i> Lihat Laporan KIR
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">Total Ruangan</p>
+                            <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ ruanganList.length }}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-hospital"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">Total Aset ALKES</p>
+                            <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ asetList.length }}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-stethoscope"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">Kondisi Baik</p>
+                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">{{ countByKondisi('Baik') }}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">Perlu Perbaikan / Rusak</p>
+                            <h3 class="text-2xl font-bold text-rose-600 mt-1">{{ countByKondisi('Rusak Ringan') + countByKondisi('Rusak Berat') }}</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities & Next KIR Schedules -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Jadwal KIR Mendatang -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                                <i class="fa-solid fa-calendar-days text-brand-600 mr-2"></i> Agenda KIR ALKES Mendatang
+                            </h3>
+                            <button @click="currentTab = 'jadwal-kir'" class="text-xs text-brand-600 hover:underline font-semibold">Lihat Semua</button>
+                        </div>
+                        <div class="space-y-3">
+                            <div v-for="j in upcomingJadwal" :key="j.id" class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-semibold text-xs text-slate-800">{{ getAsetNama(j.aset_id) }}</h4>
+                                    <p class="text-[11px] text-slate-500">Ruangan: {{ getRuanganNama(j.ruangan_id) }} • Petugas: {{ j.petugas }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-block px-2 py-1 text-[10px] font-bold rounded-md" :class="statusJadwalBadge(j.status)">
+                                        {{ j.status }}
+                                    </span>
+                                    <p class="text-[10px] text-slate-400 mt-1">{{ formatDate(j.tanggal_jadwal) }}</p>
+                                </div>
+                            </div>
+                            <div v-if="upcomingJadwal.length === 0" class="text-center py-6 text-slate-400 text-xs">
+                                Tidak ada agenda KIR dalam waktu dekat.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Histori Mutasi Terakhir -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                                <i class="fa-solid fa-clock-rotate-left text-brand-600 mr-2"></i> Mutasi Barang Terakhir
+                            </h3>
+                            <button v-if="isAdmin" @click="currentTab = 'mutasi'" class="text-xs text-brand-600 hover:underline font-semibold">Kelola Mutasi</button>
+                        </div>
+                        <div class="space-y-3">
+                            <div v-for="m in recentMutasi" :key="m.id" class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="font-semibold text-slate-800">{{ getAsetNama(m.aset_id) }}</span>
+                                    <span class="text-slate-400 text-[10px]">{{ formatDate(m.tanggal_mutasi) }}</span>
+                                </div>
+                                <div class="flex items-center text-[11px] text-slate-600 space-x-2">
+                                    <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">{{ getRuanganNama(m.ruangan_asal_id) }}</span>
+                                    <i class="fa-solid fa-arrow-right text-slate-400"></i>
+                                    <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">{{ getRuanganNama(m.ruangan_tujuan_id) }}</span>
+                                </div>
+                            </div>
+                            <div v-if="recentMutasi.length === 0" class="text-center py-6 text-slate-400 text-xs">
+                                Belum ada riwayat mutasi.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: LAPORAN KIR RUANGAN (PUBLIC & PRINTABLE) -->
+            <section v-if="currentTab === 'public-kir'" class="space-y-6">
+                <!-- Filter Bar -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-md-center gap-4 no-print">
+                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <label class="text-xs font-bold text-slate-600 whitespace-nowrap">Pilih Ruangan:</label>
+                        <select v-model="selectedRuanganFilter" class="w-full sm:w-64 bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-brand-500 focus:border-brand-500">
+                            <option value="">-- Semua Ruangan --</option>
+                            <option v-for="r in ruanganList" :key="r.id" :value="r.id">{{ r.nama_ruangan }} ({{ r.kode_ruangan }})</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button @click="printKIR" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl font-medium shadow flex items-center space-x-2">
+                            <i class="fa-solid fa-print"></i><span>Cetak KIR</span>
+                        </button>
+                        <button @click="exportKIRExcel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2.5 rounded-xl font-medium shadow flex items-center space-x-2">
+                            <i class="fa-solid fa-file-excel"></i><span>Ekspor Excel</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KIR Print Container -->
+                <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm print-card">
+                    <!-- Print Header -->
+                    <div class="border-b-2 border-slate-800 pb-4 mb-6 text-center">
+                        <h2 class="text-xl font-bold uppercase tracking-wide text-slate-900">KARTU INVENTARIS RUANGAN (KIR)</h2>
+                        <p class="text-xs text-slate-600 mt-1">Daftar Inventaris Alat Kesehatan & Aset Ruangan</p>
+                        <div class="mt-4 grid grid-cols-2 text-left text-xs text-slate-700">
+                            <div>
+                                <p><strong>Ruangan:</strong> {{ selectedRuanganObj ? selectedRuanganObj.nama_ruangan : 'Semua Ruangan' }}</p>
+                                <p><strong>Kode Ruangan:</strong> {{ selectedRuanganObj ? selectedRuanganObj.kode_ruangan : '-' }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p><strong>Lokasi Gedung:</strong> {{ selectedRuanganObj ? selectedRuanganObj.lokasi_gedung : '-' }}</p>
+                                <p><strong>Penanggung Jawab:</strong> {{ selectedRuanganObj ? selectedRuanganObj.penanggung_jawab : '-' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table KIR -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-y border-slate-300">
+                                    <th class="p-3 text-center border-r">No</th>
+                                    <th class="p-3 border-r">Kode Aset / NUP</th>
+                                    <th class="p-3 border-r">Nama Barang / ALKES</th>
+                                    <th class="p-3 border-r">Merk / Tipe</th>
+                                    <th class="p-3 border-r">No. Seri</th>
+                                    <th class="p-3 text-center border-r">Th. Perolehan</th>
+                                    <th class="p-3 text-center border-r">Kondisi</th>
+                                    <th class="p-3">Ruangan</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                <tr v-for="(item, idx) in filteredAsetForKIR" :key="item.id" class="hover:bg-slate-50">
+                                    <td class="p-3 text-center border-r font-medium text-slate-500">{{ idx + 1 }}</td>
+                                    <td class="p-3 border-r font-mono font-semibold text-slate-800">{{ item.kode_aset }}</td>
+                                    <td class="p-3 border-r font-medium text-slate-900">{{ item.nama_barang }}</td>
+                                    <td class="p-3 border-r text-slate-600">{{ item.merk_tipe || '-' }}</td>
+                                    <td class="p-3 border-r text-slate-600 font-mono">{{ item.no_seri || '-' }}</td>
+                                    <td class="p-3 text-center border-r text-slate-700">{{ item.tahun_perolehan }}</td>
+                                    <td class="p-3 text-center border-r">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="kondisiBadgeClass(item.kondisi)">
+                                            {{ item.kondisi }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-slate-700">{{ getRuanganNama(item.ruangan_id) }}</td>
+                                </tr>
+                                <tr v-if="filteredAsetForKIR.length === 0">
+                                    <td colspan="8" class="p-8 text-center text-slate-400 italic">Tidak ada data aset untuk ruangan yang dipilih.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Signature Area for Official Document -->
+                    <div class="mt-12 grid grid-cols-2 text-center text-xs text-slate-800">
+                        <div>
+                            <p class="mb-16">Mengetahui,<br><strong>Pengelola Barang / Aset</strong></p>
+                            <p class="font-bold underline">( ___________________________ )</p>
+                            <p class="text-[10px] text-slate-500">NIP. .................................................</p>
+                        </div>
+                        <div>
+                            <p class="mb-16">Penanggung Jawab Ruangan,<br><strong>{{ selectedRuanganObj ? selectedRuanganObj.nama_ruangan : 'Ka. Ruangan' }}</strong></p>
+                            <p class="font-bold underline">( {{ selectedRuanganObj ? selectedRuanganObj.penanggung_jawab : '___________________________' }} )</p>
+                            <p class="text-[10px] text-slate-500">NIP. .................................................</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: JADWAL KIR ALKES -->
+            <section v-if="currentTab === 'jadwal-kir'" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Jadwal Pemeliharaan & KIR ALKES</h2>
+                        <p class="text-xs text-slate-500">Jadwal pengujian berkala dan verifikasi kondisi fisik alat kesehatan.</p>
+                    </div>
+                    <button v-if="isAdmin" @click="openModalJadwal()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i><span>Buat Jadwal Baru</span>
+                    </button>
+                </div>
+
+                <!-- Table Jadwal -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">Tgl Jadwal</th>
+                                    <th class="p-3">Alat Kesehatan (Aset)</th>
+                                    <th class="p-3">Ruangan</th>
+                                    <th class="p-3">Petugas Inspection</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Hasil Inspeksi / Catatan</th>
+                                    <th v-if="isAdmin" class="p-3 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                <tr v-for="j in jadwalList" :key="j.id" class="hover:bg-slate-50">
+                                    <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">{{ formatDate(j.tanggal_jadwal) }}</td>
+                                    <td class="p-3">
+                                        <div class="font-bold text-slate-900">{{ getAsetNama(j.aset_id) }}</div>
+                                        <div class="text-[10px] text-slate-400 font-mono">{{ getAsetKode(j.aset_id) }}</div>
+                                    </td>
+                                    <td class="p-3 text-slate-700">{{ getRuanganNama(j.ruangan_id) }}</td>
+                                    <td class="p-3 text-slate-700">{{ j.petugas }}</td>
+                                    <td class="p-3">
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold" :class="statusJadwalBadge(j.status)">
+                                            {{ j.status }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-slate-600 italic">{{ j.hasil_inspeksi || '-' }}</td>
+                                    <td v-if="isAdmin" class="p-3 text-right space-x-1 whitespace-nowrap">
+                                        <button @click="openModalJadwal(j)" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button @click="deleteJadwal(j.id)" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr v-if="jadwalList.length === 0">
+                                    <td colspan="7" class="p-8 text-center text-slate-400">Belum ada agenda KIR ALKES.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: KELOLA ASET (ADMIN ONLY) -->
+            <section v-if="currentTab === 'data-aset' && isAdmin" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Manajemen Data Aset ALKES</h2>
+                        <p class="text-xs text-slate-500">Tambah, ubah, dan hapus data alat kesehatan inventaris.</p>
+                    </div>
+                    <button @click="openModalAset()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i><span>Tambah Aset ALKES</span>
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center px-4">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 mr-3"></i>
+                    <input v-model="searchAset" type="text" placeholder="Cari kode aset, nama barang, merk..." class="w-full bg-transparent text-xs text-slate-800 focus:outline-none">
+                </div>
+
+                <!-- Table Aset -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">Kode / NUP</th>
+                                    <th class="p-3">Nama Barang</th>
+                                    <th class="p-3">Merk / Type</th>
+                                    <th class="p-3">No. Seri</th>
+                                    <th class="p-3">Ruangan Saat Ini</th>
+                                    <th class="p-3 text-center">Thn</th>
+                                    <th class="p-3 text-center">Kondisi</th>
+                                    <th class="p-3 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                <tr v-for="item in filteredAsetList" :key="item.id" class="hover:bg-slate-50">
+                                    <td class="p-3 font-mono font-bold text-slate-800">{{ item.kode_aset }}</td>
+                                    <td class="p-3 font-semibold text-slate-900">{{ item.nama_barang }}</td>
+                                    <td class="p-3 text-slate-600">{{ item.merk_tipe || '-' }}</td>
+                                    <td class="p-3 text-slate-600 font-mono">{{ item.no_seri || '-' }}</td>
+                                    <td class="p-3">
+                                        <span class="bg-brand-50 text-brand-700 px-2.5 py-1 rounded-md text-[11px] font-medium border border-brand-200">
+                                            {{ getRuanganNama(item.ruangan_id) }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-center text-slate-600">{{ item.tahun_perolehan }}</td>
+                                    <td class="p-3 text-center">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold" :class="kondisiBadgeClass(item.kondisi)">
+                                            {{ item.kondisi }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                                        <button @click="openModalAset(item)" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button @click="deleteAset(item.id)" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredAsetList.length === 0">
+                                    <td colspan="8" class="p-8 text-center text-slate-400">Tidak ada data aset ditemukan.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: MUTASI BARANG ANTA RUANGAN (ADMIN ONLY) -->
+            <section v-if="currentTab === 'mutasi' && isAdmin" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Mutasi Barang Antar Ruangan</h2>
+                        <p class="text-xs text-slate-500">Pindahkan lokasi barang aset/ALKES dari ruangan asal ke ruangan tujuan.</p>
+                    </div>
+                    <button @click="openModalMutasi()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
+                        <i class="fa-solid fa-right-left"></i><span>Proses Mutasi Baru</span>
+                    </button>
+                </div>
+
+                <!-- Table History Mutasi -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 font-bold text-xs text-slate-700">
+                        Riwayat Mutasi Barang
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-semibold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">Tanggal</th>
+                                    <th class="p-3">Nama Barang ALKES</th>
+                                    <th class="p-3">Ruangan Asal</th>
+                                    <th class="p-3">Ruangan Tujuan</th>
+                                    <th class="p-3">Alasan Mutasi</th>
+                                    <th class="p-3">Petugas Penanggung Jawab</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200">
+                                <tr v-for="m in mutasiList" :key="m.id" class="hover:bg-slate-50">
+                                    <td class="p-3 font-semibold text-slate-800 whitespace-nowrap">{{ formatDate(m.tanggal_mutasi) }}</td>
+                                    <td class="p-3 font-bold text-slate-900">{{ getAsetNama(m.aset_id) }}</td>
+                                    <td class="p-3">
+                                        <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[11px] font-medium">
+                                            {{ getRuanganNama(m.ruangan_asal_id) }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3">
+                                        <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-medium">
+                                            {{ getRuanganNama(m.ruangan_tujuan_id) }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-slate-600">{{ m.alasan || '-' }}</td>
+                                    <td class="p-3 text-slate-700">{{ m.petugas }}</td>
+                                </tr>
+                                <tr v-if="mutasiList.length === 0">
+                                    <td colspan="6" class="p-8 text-center text-slate-400">Belum ada riwayat mutasi barang.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: DATA RUANGAN (ADMIN ONLY) -->
+            <section v-if="currentTab === 'data-ruangan' && isAdmin" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Master Data Ruangan</h2>
+                        <p class="text-xs text-slate-500">Kelola unit, poliklinik, laboratorium, dan ruangan di fasilitas pelayanan kesehatan.</p>
+                    </div>
+                    <button @click="openModalRuangan()" class="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i><span>Tambah Ruangan</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-for="r in ruanganList" :key="r.id" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative group hover:border-brand-500 transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="bg-slate-100 text-slate-700 font-mono text-[11px] font-bold px-2 py-1 rounded-md">{{ r.kode_ruangan }}</span>
+                            <div class="space-x-1">
+                                <button @click="openModalRuangan(r)" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg text-xs">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button @click="deleteRuangan(r.id)" class="text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg text-xs">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-base mb-1">{{ r.nama_ruangan }}</h3>
+                        <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-location-dot mr-1"></i> Gedung / Lokasi: {{ r.lokasi_gedung || '-' }}</p>
+                        <div class="border-t border-slate-100 pt-3 text-xs flex justify-between text-slate-600">
+                            <span>PJ: <strong>{{ r.penanggung_jawab || '-' }}</strong></span>
+                            <span class="text-brand-600 font-bold">{{ countAsetByRuangan(r.id) }} Aset</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- MODAL LOGIN ADMIN -->
+        <div v-if="showLoginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
+                <button @click="showLoginModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center mx-auto text-xl mb-3">
+                        <i class="fa-solid fa-user-lock"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800">Login Administrator</h3>
+                    <p class="text-xs text-slate-500 mt-1">Masukkan kredensial untuk mengelola data</p>
+                </div>
+
+                <form @submit.prevent="handleLogin" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Username / Email</label>
+                        <input v-model="loginForm.email" type="text" required placeholder="admin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:ring-brand-500 focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                        <input v-model="loginForm.password" type="password" required placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:ring-brand-500 focus:border-brand-500">
+                    </div>
+                    <div v-if="loginError" class="p-3 bg-rose-50 text-rose-600 text-xs rounded-xl font-medium">
+                        {{ loginError }}
+                    </div>
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold py-3 rounded-xl shadow-lg shadow-brand-500/30 transition">
+                        Masuk Sistem
+                    </button>
+                </form>
+                <p class="text-[11px] text-center text-slate-400 mt-4">
+                    Demo Preset: Username: <b>admin</b> | Pass: <b>admin123</b>
+                </p>
+            </div>
+        </div>
+
+        <!-- MODAL FORM ASET ALKES -->
+        <div v-if="showModalAset" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                <button @click="showModalAset = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <h3 class="text-lg font-bold text-slate-800 mb-4">{{ formAset.id ? 'Edit Aset ALKES' : 'Tambah Aset ALKES' }}</h3>
+
+                <form @submit.prevent="saveAset" class="space-y-4 text-xs">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Kode Aset / NUP</label>
+                            <input v-model="formAset.kode_aset" type="text" required placeholder="ALKES-001" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Tahun Perolehan</label>
+                            <input v-model="formAset.tahun_perolehan" type="number" required placeholder="2023" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Nama Barang / Alat Kesehatan</label>
+                        <input v-model="formAset.nama_barang" type="text" required placeholder="Contoh: Patient Monitor" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Merk / Tipe</label>
+                            <input v-model="formAset.merk_tipe" type="text" placeholder="Mindray uMEC10" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Nomor Seri (S/N)</label>
+                            <input v-model="formAset.no_seri" type="text" placeholder="SN12345678" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Ruangan Penempatan</label>
+                        <select v-model="formAset.ruangan_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                            <option value="">-- Pilih Ruangan --</option>
+                            <option v-for="r in ruanganList" :key="r.id" :value="r.id">{{ r.nama_ruangan }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kondisi Barang</label>
+                        <select v-model="formAset.kondisi" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                            <option value="Baik">Baik</option>
+                            <option value="Rusak Ringan">Rusak Ringan</option>
+                            <option value="Rusak Berat">Rusak Berat</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button type="button" @click="showModalAset = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
+                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL FORM MUTASI -->
+        <div v-if="showModalMutasi" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+                <button @click="showModalMutasi = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Proses Mutasi Barang Antar Ruangan</h3>
+
+                <form @submit.prevent="saveMutasi" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Pilih Barang / Aset ALKES</label>
+                        <select v-model="formMutasi.aset_id" @change="onAsetMutasiSelect" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                            <option value="">-- Pilih Aset --</option>
+                            <option v-for="a in asetList" :key="a.id" :value="a.id">{{ a.nama_barang }} ({{ a.kode_aset }}) - Ruang: {{ getRuanganNama(a.ruangan_id) }}</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Ruangan Asal</label>
+                            <input type="text" readonly :value="getRuanganNama(formMutasi.ruangan_asal_id)" class="w-full bg-slate-100 border border-slate-200 text-slate-500 rounded-xl p-2.5 font-semibold">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Ruangan Tujuan</label>
+                            <select v-model="formMutasi.ruangan_tujuan_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                                <option value="">-- Pilih Tujuan --</option>
+                                <option v-for="r in filteredRuanganTujuan" :key="r.id" :value="r.id">{{ r.nama_ruangan }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Mutasi</label>
+                        <input v-model="formMutasi.tanggal_mutasi" type="date" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Petugas Penanggung Jawab</label>
+                        <input v-model="formMutasi.petugas" type="text" required placeholder="Nama Petugas IPSRS / Sarpras" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Alasan Mutasi</label>
+                        <textarea v-model="formMutasi.alasan" rows="2" placeholder="Contoh: Kebutuhan darurat unit ICU..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5"></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button type="button" @click="showModalMutasi = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
+                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Eksekusi Mutasi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL FORM JADWAL KIR -->
+        <div v-if="showModalJadwal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+                <button @click="showModalJadwal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <h3 class="text-lg font-bold text-slate-800 mb-4">{{ formJadwal.id ? 'Edit Jadwal KIR' : 'Buat Jadwal KIR ALKES' }}</h3>
+
+                <form @submit.prevent="saveJadwal" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Pilih Alat Kesehatan</label>
+                        <select v-model="formJadwal.aset_id" @change="onAsetJadwalSelect" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                            <option value="">-- Pilih ALKES --</option>
+                            <option v-for="a in asetList" :key="a.id" :value="a.id">{{ a.nama_barang }} ({{ a.kode_aset }})</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Jadwal Inspeksi</label>
+                        <input v-model="formJadwal.tanggal_jadwal" type="date" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Petugas Inspeksi / Teknisi</label>
+                        <input v-model="formJadwal.petugas" type="text" required placeholder="Tim Elektromedis / IPSRS" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Status Inspeksi</label>
+                        <select v-model="formJadwal.status" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                            <option value="Terjadwal">Terjadwal</option>
+                            <option value="Selesai">Selesai (Lolos Verifikasi)</option>
+                            <option value="Menunggu Sparepart">Menunggu Sparepart</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Hasil Inspeksi / Catatan</label>
+                        <textarea v-model="formJadwal.hasil_inspeksi" rows="2" placeholder="Catatan kondisi fisik/kalibrasi..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5"></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button type="button" @click="showModalJadwal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
+                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan Agenda</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL FORM RUANGAN -->
+        <div v-if="showModalRuangan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+                <button @click="showModalRuangan = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <h3 class="text-lg font-bold text-slate-800 mb-4">{{ formRuangan.id ? 'Edit Ruangan' : 'Tambah Ruangan Baru' }}</h3>
+
+                <form @submit.prevent="saveRuangan" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kode Ruangan</label>
+                        <input v-model="formRuangan.kode_ruangan" type="text" required placeholder="R-IGD-01" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Nama Ruangan / Unit</label>
+                        <input v-model="formRuangan.nama_ruangan" type="text" required placeholder="Ruang IGD Utama" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Gedung / Lokasi</label>
+                        <input v-model="formRuangan.lokasi_gedung" type="text" placeholder="Gedung A LT. 1" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Penanggung Jawab (Ka. Ruangan)</label>
+                        <input v-model="formRuangan.penanggung_jawab" type="text" placeholder="Ns. Budi Santoso, S.Kep" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button type="button" @click="showModalRuangan = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Batal</button>
+                        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL KONFIGURASI SUPABASE -->
+        <div v-if="showConfigModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+                <button @click="showConfigModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Konfigurasi Database Supabase</h3>
+                <p class="text-xs text-slate-500 mb-4">Masukkan Supabase URL & Anon Key dari Dashboard Supabase Anda.</p>
+
+                <form @submit.prevent="saveSupabaseConfig" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Supabase URL</label>
+                        <input v-model="supabaseConfig.url" type="text" placeholder="https://xyz...supabase.co" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Supabase Anon Key</label>
+                        <input v-model="supabaseConfig.key" type="password" placeholder="eyJhbG..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5">
+                    </div>
+
+                    <div class="pt-2 flex justify-between items-center">
+                        <button type="button" @click="clearSupabaseConfig" class="text-rose-600 text-xs hover:underline font-semibold">Gunakan Mode Demo</button>
+                        <div class="space-x-2">
+                            <button type="button" @click="showConfigModal = false" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl">Batal</button>
+                            <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow">Simpan & Hubungkan</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
+            <p>&copy; 2026 Sistem KIR Ruangan Barang ALKES • Siap untuk GitHub Pages & Supabase</p>
+        </footer>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // Navigation & State
+                const currentTab = ref('dashboard');
+                const isAdmin = ref(false);
+                const isSupabaseConnected = ref(false);
+                const showLoginModal = ref(false);
+                const showConfigModal = ref(false);
+
+                // Supabase Config
+                const supabaseConfig = ref({
+                    url: localStorage.getItem('supabase_url') || '',
+                    key: localStorage.getItem('supabase_key') || ''
+                });
+                let supabaseClient = null;
+
+                // Data Collections
+                const ruanganList = ref([]);
+                const asetList = ref([]);
+                const jadwalList = ref([]);
+                const mutasiList = ref([]);
+
+                // Filters & Search
+                const selectedRuanganFilter = ref('');
+                const searchAset = ref('');
+
+                // Login Form
+                const loginForm = ref({ email: '', password: '' });
+                const loginError = ref('');
+
+                // Modal States
+                const showModalAset = ref(false);
+                const showModalMutasi = ref(false);
+                const showModalJadwal = ref(false);
+                const showModalRuangan = ref(false);
+
+                // Forms Data
+                const formAset = ref({ id: null, kode_aset: '', nama_barang: '', merk_tipe: '', no_seri: '', ruangan_id: '', tahun_perolehan: new Date().getFullYear(), kondisi: 'Baik' });
+                const formMutasi = ref({ aset_id: '', ruangan_asal_id: '', ruangan_tujuan_id: '', tanggal_mutasi: new Date().toISOString().substring(0,10), petugas: '', alasan: '' });
+                const formJadwal = ref({ id: null, aset_id: '', ruangan_id: '', tanggal_jadwal: new Date().toISOString().substring(0,10), petugas: '', status: 'Terjadwal', hasil_inspeksi: '' });
+                const formRuangan = ref({ id: null, kode_ruangan: '', nama_ruangan: '', lokasi_gedung: '', penanggung_jawab: '' });
+
+                // Initialize Mock Sample Data (Fallback mode)
+                const initMockData = () => {
+                    ruanganList.value = [
+                        { id: '1', kode_ruangan: 'R-IGD-01', nama_ruangan: 'Instalasi Gawat Darurat (IGD)', lokasi_gedung: 'Gedung A Utama LT. 1', penanggung_jawab: 'Ns. Ratna, S.Kep' },
+                        { id: '2', kode_ruangan: 'R-ICU-02', nama_ruangan: 'Intensive Care Unit (ICU)', lokasi_gedung: 'Gedung B LT. 2', penanggung_jawab: 'dr. Ahmad Sp.An' },
+                        { id: '3', kode_ruangan: 'R-POLI-01', nama_ruangan: 'Poliklinik Anak', lokasi_gedung: 'Gedung A LT. 2', penanggung_jawab: 'Siti Rahma, Amd.Kep' },
+                        { id: '4', kode_ruangan: 'R-OK-01', nama_ruangan: 'Kamar Operasi (OK 1)', lokasi_gedung: 'Gedung C LT. 3', penanggung_jawab: 'Hendra, S.ST' }
+                    ];
+
+                    asetList.value = [
+                        { id: '101', kode_aset: 'ALK-IGD-001', nama_barang: 'Patient Monitor 5 Parameter', merk_tipe: 'Mindray uMEC10', no_seri: 'SN9872123', ruangan_id: '1', tahun_perolehan: 2022, kondisi: 'Baik' },
+                        { id: '102', kode_aset: 'ALK-ICU-002', nama_barang: 'Ventilator Transport', merk_tipe: 'Hamilton T1', no_seri: 'SN665421', ruangan_id: '2', tahun_perolehan: 2021, kondisi: 'Baik' },
+                        { id: '103', kode_aset: 'ALK-IGD-003', nama_barang: 'Defibrillator Biphasic', merk_tipe: 'Zoll M Series', no_seri: 'SN120098', ruangan_id: '1', tahun_perolehan: 2020, kondisi: 'Rusak Ringan' },
+                        { id: '104', kode_aset: 'ALK-POLI-004', nama_barang: 'Infuse Pump', merk_tipe: 'Terumo TE-171', no_seri: 'SN443211', ruangan_id: '3', tahun_perolehan: 2023, kondisi: 'Baik' }
+                    ];
+
+                    jadwalList.value = [
+                        { id: '201', aset_id: '101', ruangan_id: '1', tanggal_jadwal: '2026-10-15', petugas: 'Budi (Elektromedis)', status: 'Terjadwal', hasil_inspeksi: 'Inspeksi berkala semester II' },
+                        { id: '202', aset_id: '103', ruangan_id: '1', tanggal_jadwal: '2026-10-05', petugas: 'Andi (IPSRS)', status: 'Menunggu Sparepart', hasil_inspeksi: 'Pengantian pad baterai cadangan' }
+                    ];
+
+                    mutasiList.value = [
+                        { id: '301', aset_id: '102', ruangan_asal_id: '1', ruangan_tujuan_id: '2', tanggal_mutasi: '2026-09-20', petugas: 'Agus IPSRS', alasan: 'Kebutuhan urgent pasien ICU' }
+                    ];
+                };
+
+                // Initialize Supabase Client
+                const setupSupabase = () => {
+                    if (supabaseConfig.value.url && supabaseConfig.value.key) {
+                        try {
+                            supabaseClient = supabase.createClient(supabaseConfig.value.url, supabaseConfig.value.key);
+                            isSupabaseConnected.value = true;
+                            fetchFromSupabase();
+                        } catch (e) {
+                            console.error('Supabase connection failed:', e);
+                            isSupabaseConnected.value = false;
+                            initMockData();
+                        }
+                    } else {
+                        isSupabaseConnected.value = false;
+                        initMockData();
+                    }
+                };
+
+                // Fetch Data from Supabase
+                const fetchFromSupabase = async () => {
+                    if (!supabaseClient) return;
+                    try {
+                        let { data: rData } = await supabaseClient.from('ruangan').select('*');
+                        if (rData) ruanganList.value = rData;
+
+                        let { data: aData } = await supabaseClient.from('aset_alkes').select('*');
+                        if (aData) asetList.value = aData;
+
+                        let { data: jData } = await supabaseClient.from('jadwal_kir').select('*');
+                        if (jData) jadwalList.value = jData;
+
+                        let { data: mData } = await supabaseClient.from('mutasi_barang').select('*');
+                        if (mData) mutasiList.value = mData;
+                    } catch (err) {
+                        console.warn('Gagal load dari Supabase, pakai data lokal/demo', err);
+                    }
+                };
+
+                // Navigation class helper
+                const navClass = (tab) => {
+                    return currentTab.value === tab 
+                        ? 'border-brand-500 text-brand-500 font-bold bg-brand-900/40' 
+                        : 'border-transparent text-slate-300 hover:text-white hover:border-brand-400';
+                };
+
+                // Login Handler
+                const handleLogin = () => {
+                    if (loginForm.value.email === 'admin' && loginForm.value.password === 'admin123') {
+                        isAdmin.value = true;
+                        showLoginModal.value = false;
+                        loginError.value = '';
+                        loginForm.value = { email: '', password: '' };
+                    } else {
+                        loginError.value = 'Username atau password salah!';
+                    }
+                };
+
+                const logout = () => {
+                    isAdmin.value = false;
+                    currentTab.value = 'dashboard';
+                };
+
+                // Save Supabase Configuration
+                const saveSupabaseConfig = () => {
+                    localStorage.setItem('supabase_url', supabaseConfig.value.url);
+                    localStorage.setItem('supabase_key', supabaseConfig.value.key);
+                    showConfigModal.value = false;
+                    setupSupabase();
+                };
+
+                const clearSupabaseConfig = () => {
+                    localStorage.removeItem('supabase_url');
+                    localStorage.removeItem('supabase_key');
+                    supabaseConfig.value = { url: '', key: '' };
+                    showConfigModal.value = false;
+                    setupSupabase();
+                };
+
+                // Helper Lookups
+                const getRuanganNama = (id) => {
+                    const r = ruanganList.value.find(x => x.id == id);
+                    return r ? r.nama_ruangan : '-';
+                };
+
+                const getAsetNama = (id) => {
+                    const a = asetList.value.find(x => x.id == id);
+                    return a ? a.nama_barang : '-';
+                };
+
+                const getAsetKode = (id) => {
+                    const a = asetList.value.find(x => x.id == id);
+                    return a ? a.kode_aset : '-';
+                };
+
+                const countByKondisi = (kondisi) => {
+                    return asetList.value.filter(a => a.kondisi === kondisi).length;
+                };
+
+                const countAsetByRuangan = (ruanganId) => {
+                    return asetList.value.filter(a => a.ruangan_id == ruanganId).length;
+                };
+
+                const formatDate = (str) => {
+                    if (!str) return '-';
+                    const d = new Date(str);
+                    return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+                };
+
+                const kondisiBadgeClass = (kondisi) => {
+                    if (kondisi === 'Baik') return 'bg-emerald-100 text-emerald-800';
+                    if (kondisi === 'Rusak Ringan') return 'bg-amber-100 text-amber-800';
+                    return 'bg-rose-100 text-rose-800';
+                };
+
+                const statusJadwalBadge = (status) => {
+                    if (status === 'Selesai') return 'bg-emerald-100 text-emerald-800';
+                    if (status === 'Terjadwal') return 'bg-blue-100 text-blue-800';
+                    return 'bg-amber-100 text-amber-800';
+                };
+
+                // Computed Properties
+                const selectedRuanganObj = computed(() => {
+                    return ruanganList.value.find(r => r.id == selectedRuanganFilter.value);
+                });
+
+                const filteredAsetForKIR = computed(() => {
+                    if (!selectedRuanganFilter.value) return asetList.value;
+                    return asetList.value.filter(a => a.ruangan_id == selectedRuanganFilter.value);
+                });
+
+                const filteredAsetList = computed(() => {
+                    if (!searchAset.value) return asetList.value;
+                    const q = searchAset.value.toLowerCase();
+                    return asetList.value.filter(a => 
+                        a.kode_aset.toLowerCase().includes(q) || 
+                        a.nama_barang.toLowerCase().includes(q) || 
+                        (a.merk_tipe && a.merk_tipe.toLowerCase().includes(q))
+                    );
+                });
+
+                const filteredRuanganTujuan = computed(() => {
+                    return ruanganList.value.filter(r => r.id != formMutasi.value.ruangan_asal_id);
+                });
+
+                const upcomingJadwal = computed(() => {
+                    return [...jadwalList.value].sort((a,b) => new Date(a.tanggal_jadwal) - new Date(b.tanggal_jadwal)).slice(0, 5);
+                });
+
+                const recentMutasi = computed(() => {
+                    return [...mutasiList.value].reverse().slice(0, 5);
+                });
+
+                // CRUD ASET
+                const openModalAset = (item = null) => {
+                    if (item) {
+                        formAset.value = { ...item };
+                    } else {
+                        formAset.value = { id: null, kode_aset: '', nama_barang: '', merk_tipe: '', no_seri: '', ruangan_id: ruanganList.value[0]?.id || '', tahun_perolehan: new Date().getFullYear(), kondisi: 'Baik' };
+                    }
+                    showModalAset.value = true;
+                };
+
+                const saveAset = async () => {
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        if (formAset.value.id) {
+                            await supabaseClient.from('aset_alkes').update(formAset.value).eq('id', formAset.value.id);
+                        } else {
+                            delete formAset.value.id;
+                            await supabaseClient.from('aset_alkes').insert([formAset.value]);
+                        }
+                        fetchFromSupabase();
+                    } else {
+                        if (formAset.value.id) {
+                            const idx = asetList.value.findIndex(a => a.id == formAset.value.id);
+                            if (idx !== -1) asetList.value[idx] = { ...formAset.value };
+                        } else {
+                            asetList.value.push({ ...formAset.value, id: Date.now().toString() });
+                        }
+                    }
+                    showModalAset.value = false;
+                };
+
+                const deleteAset = async (id) => {
+                    if (!confirm('Yakin ingin menghapus aset ini?')) return;
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        await supabaseClient.from('aset_alkes').delete().eq('id', id);
+                        fetchFromSupabase();
+                    } else {
+                        asetList.value = asetList.value.filter(a => a.id != id);
+                    }
+                };
+
+                // CRUD MUTASI
+                const openModalMutasi = () => {
+                    formMutasi.value = { aset_id: '', ruangan_asal_id: '', ruangan_tujuan_id: '', tanggal_mutasi: new Date().toISOString().substring(0,10), petugas: '', alasan: '' };
+                    showModalMutasi.value = true;
+                };
+
+                const onAsetMutasiSelect = () => {
+                    const aset = asetList.value.find(a => a.id == formMutasi.value.aset_id);
+                    if (aset) {
+                        formMutasi.value.ruangan_asal_id = aset.ruangan_id;
+                    }
+                };
+
+                const saveMutasi = async () => {
+                    const payload = { ...formMutasi.value };
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        await supabaseClient.from('mutasi_barang').insert([payload]);
+                        // Update aset's current room
+                        await supabaseClient.from('aset_alkes').update({ ruangan_id: payload.ruangan_tujuan_id }).eq('id', payload.aset_id);
+                        fetchFromSupabase();
+                    } else {
+                        mutasiList.value.push({ ...payload, id: Date.now().toString() });
+                        const targetAset = asetList.value.find(a => a.id == payload.aset_id);
+                        if (targetAset) targetAset.ruangan_id = payload.ruangan_tujuan_id;
+                    }
+                    showModalMutasi.value = false;
+                };
+
+                // CRUD JADWAL
+                const openModalJadwal = (item = null) => {
+                    if (item) {
+                        formJadwal.value = { ...item };
+                    } else {
+                        formJadwal.value = { id: null, aset_id: '', ruangan_id: '', tanggal_jadwal: new Date().toISOString().substring(0,10), petugas: '', status: 'Terjadwal', hasil_inspeksi: '' };
+                    }
+                    showModalJadwal.value = true;
+                };
+
+                const onAsetJadwalSelect = () => {
+                    const aset = asetList.value.find(a => a.id == formJadwal.value.aset_id);
+                    if (aset) formJadwal.value.ruangan_id = aset.ruangan_id;
+                };
+
+                const saveJadwal = async () => {
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        if (formJadwal.value.id) {
+                            await supabaseClient.from('jadwal_kir').update(formJadwal.value).eq('id', formJadwal.value.id);
+                        } else {
+                            delete formJadwal.value.id;
+                            await supabaseClient.from('jadwal_kir').insert([formJadwal.value]);
+                        }
+                        fetchFromSupabase();
+                    } else {
+                        if (formJadwal.value.id) {
+                            const idx = jadwalList.value.findIndex(j => j.id == formJadwal.value.id);
+                            if (idx !== -1) jadwalList.value[idx] = { ...formJadwal.value };
+                        } else {
+                            jadwalList.value.push({ ...formJadwal.value, id: Date.now().toString() });
+                        }
+                    }
+                    showModalJadwal.value = false;
+                };
+
+                const deleteJadwal = async (id) => {
+                    if (!confirm('Hapus jadwal ini?')) return;
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        await supabaseClient.from('jadwal_kir').delete().eq('id', id);
+                        fetchFromSupabase();
+                    } else {
+                        jadwalList.value = jadwalList.value.filter(j => j.id != id);
+                    }
+                };
+
+                // CRUD RUANGAN
+                const openModalRuangan = (item = null) => {
+                    if (item) {
+                        formRuangan.value = { ...item };
+                    } else {
+                        formRuangan.value = { id: null, kode_ruangan: '', nama_ruangan: '', lokasi_gedung: '', penanggung_jawab: '' };
+                    }
+                    showModalRuangan.value = true;
+                };
+
+                const saveRuangan = async () => {
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        if (formRuangan.value.id) {
+                            await supabaseClient.from('ruangan').update(formRuangan.value).eq('id', formRuangan.value.id);
+                        } else {
+                            delete formRuangan.value.id;
+                            await supabaseClient.from('ruangan').insert([formRuangan.value]);
+                        }
+                        fetchFromSupabase();
+                    } else {
+                        if (formRuangan.value.id) {
+                            const idx = ruanganList.value.findIndex(r => r.id == formRuangan.value.id);
+                            if (idx !== -1) ruanganList.value[idx] = { ...formRuangan.value };
+                        } else {
+                            ruanganList.value.push({ ...formRuangan.value, id: Date.now().toString() });
+                        }
+                    }
+                    showModalRuangan.value = false;
+                };
+
+                const deleteRuangan = async (id) => {
+                    if (!confirm('Hapus ruangan ini? Aset di ruangan ini akan tetap tersimpan.')) return;
+                    if (isSupabaseConnected.value && supabaseClient) {
+                        await supabaseClient.from('ruangan').delete().eq('id', id);
+                        fetchFromSupabase();
+                    } else {
+                        ruanganList.value = ruanganList.value.filter(r => r.id != id);
+                    }
+                };
+
+                // PRINT & EXPORT
+                const printKIR = () => {
+                    window.print();
+                };
+
+                const exportKIRExcel = () => {
+                    const data = filteredAsetForKIR.value.map((item, index) => ({
+                        'No': index + 1,
+                        'Kode Aset / NUP': item.kode_aset,
+                        'Nama Barang / ALKES': item.nama_barang,
+                        'Merk / Tipe': item.merk_tipe || '-',
+                        'No. Seri': item.no_seri || '-',
+                        'Tahun Perolehan': item.tahun_perolehan,
+                        'Kondisi': item.kondisi,
+                        'Ruangan': getRuanganNama(item.ruangan_id)
+                    }));
+
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "KIR_Ruangan");
+                    XLSX.writeFile(wb, `Laporan_KIR_${selectedRuanganObj.value ? selectedRuanganObj.value.kode_ruangan : 'Semua'}.xlsx`);
+                };
+
+                onMounted(() => {
+                    setupSupabase();
+                });
+
+                return {
+                    currentTab, isAdmin, isSupabaseConnected, showLoginModal, showConfigModal,
+                    supabaseConfig, ruanganList, asetList, jadwalList, mutasiList,
+                    selectedRuanganFilter, searchAset, loginForm, loginError,
+                    showModalAset, showModalMutasi, showModalJadwal, showModalRuangan,
+                    formAset, formMutasi, formJadwal, formRuangan,
+                    navClass, handleLogin, logout, saveSupabaseConfig, clearSupabaseConfig,
+                    getRuanganNama, getAsetNama, getAsetKode, countByKondisi, countAsetByRuangan,
+                    formatDate, kondisiBadgeClass, statusJadwalBadge, selectedRuanganObj,
+                    filteredAsetForKIR, filteredAsetList, filteredRuanganTujuan, upcomingJadwal, recentMutasi,
+                    openModalAset, saveAset, deleteAset,
+                    openModalMutasi, onAsetMutasiSelect, saveMutasi,
+                    openModalJadwal, onAsetJadwalSelect, saveJadwal, deleteJadwal,
+                    openModalRuangan, saveRuangan, deleteRuangan,
+                    printKIR, exportKIRExcel
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
