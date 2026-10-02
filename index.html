@@ -1573,32 +1573,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     // Tarik data dari Supabase berdasarkan filter dari URL tersebut
     await muatDataAset(filterKategori, filterStatus);
 });
-// 1. Inisialisasi Klien Supabase (Pastikan URL dan KEY ini sudah dinamis atau diisi)
-const SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || "URL_SUPABASE_ANDA";
-const SUPABASE_KEY = localStorage.getItem('SUPABASE_ANON_KEY') || "KEY_ANON_SUPABASE_ANDA";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// 2. Jalankan fungsi ini setiap kali halaman selesai dimuat (Page Load)
-document.addEventListener("DOMContentLoaded", async function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Baca parameter dari URL, jika kosong gunakan nilai default
-    const tabAktif = urlParams.get('tab') || 'dashboard';
-    const filterKategori = urlParams.get('kategori') || 'Semua';
-    const filterStatus = urlParams.get('status') || 'Semua';
-
-    // Arahkan visual halaman ke tab dan set nilai dropdown filter sesuai URL
-    switchTab(tabAktif);
-    
-    const kategoriSelect = document.getElementById('filter-kategori'); // Sesuaikan ID elemen di HTML Anda
-    const statusSelect = document.getElementById('filter-status');     // Sesuaikan ID elemen di HTML Anda
-    
-    if(kategoriSelect) kategoriSelect.value = filterKategori;
-    if(statusSelect) statusSelect.value = filterStatus;
-
-    // Tarik data dari Supabase berdasarkan filter dari URL tersebut
-    await muatDataAset(filterKategori, filterStatus);
-});
+        
 </script>
 </body>
 </html>
