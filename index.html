@@ -756,6 +756,44 @@ CREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);
     </div>
 
     <script>
+unction switchTab(tabId) {
+    // 1. Logika lama Anda untuk menyembunyikan/menampilkan tab tetap di sini
+    // Contoh asumsi logika lama Anda:
+    // document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+    // document.getElementById('view-' + tabId).classList.remove('hidden');
+    
+    // 2. TAMBAHKAN LOGIKA INI untuk memperbarui URL tanpa me-reload halaman
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabId);
+    window.history.pushState({}, '', url);
+}
+        
+    </script>
+
+    <script> document.addEventListener("DOMContentLoaded", function() {
+    // Ambil parameter 'tab' dari URL pembagi
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+
+    // Jika ada parameter tab di URL, langsung arahkan ke tab tersebut
+    if (activeTab) {
+        switchTab(activeTab);
+    } else {
+        // Jika tidak ada parameter di link, arahkan ke default (dashboard)
+        switchTab('dashboard');
+    }
+}); </script>
+
+
+    <script> function filterKategori(kategori) {
+    const url = new URL(window.location);
+    url.searchParams.set('kategori', kategori);
+    window.history.pushState({}, '', url);
+    
+    // panggil fungsi fetch data Supabase Anda di bawahnya...
+}</script>
+    
+    <script>
         // APP INITIAL STATE & STORAGE CONFIGURATION
         let assets = [];
         let supabaseClient = null;
