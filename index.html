@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> SIMA-RSUD </title>
+    <title>SIMA-RSUD </title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -24,14 +24,18 @@
             }
         }
     </script>
-    <!-- FontAwesome Icons CDN -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Supabase JS Client v2 CDN -->
+    <!-- QRCode.js Library CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- SheetJS (XLSX) Library CDN for Import Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase JS Client CDN v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -39,8 +43,10 @@
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             body { background: white; color: black; }
-            .shadow-sm, .shadow, .shadow-lg { box-shadow: none !important; }
+            .shadow-sm, .shadow, .shadow-lg, .shadow-2xl { box-shadow: none !important; }
+            .border { border-color: #cbd5e1 !important; }
         }
+        .print-only { display: none; }
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -65,15 +71,17 @@
             <div class="flex items-center justify-between h-16">
                 <!-- Logo & Hospital Title -->
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-brand-500 flex items-center justify-center text-white shadow-lg">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-brand-500 flex items-center justify-center text-white shadow-lg">
                         <i class="fa-solid font-bold fa-hospital-user text-xl"></i>
                     </div>
                     <div>
                         <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
                             SIMA-RSUD
-                            <span class="text-xs bg-brand-500/30 text-brand-300 font-medium px-2 py-0.5 rounded-full border border-brand-400/30">v2.5</span>
+                            <span class="text-xs bg-emerald-500/30 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Supabase
+                            </span>
                         </h1>
-                        <p class="text-xs text-slate-400 font-medium">Sistem Aset & Kalibrasi Rumah Sakit Umum Daerah</p>
+                        <p class="text-xs text-slate-400 font-medium">Sistem Aset, Kalibrasi & Pemeliharaan Alat RSUD</p>
                     </div>
                 </div>
 
@@ -81,19 +89,9 @@
                 <div class="flex items-center space-x-2 sm:space-x-4">
                     <!-- Calibration Alert Status Pill -->
                     <button onclick="switchTab('notifications')" class="relative flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition">
-                        <i class="fa-solid fa-bell text-amber-400 animate-bounce"></i>
-                        <span class="hidden md:inline">Notifikasi Kalibrasi</span>
-                        <span id="badge-alert-count" class="px-2 py-0.5 text-xs rounded-full bg-red-600 text-white font-bold">0</span>
-                    </button>
-
-                    <!-- Database Settings Modal Button -->
-                    <button onclick="openConfigModal()" title="Konfigurasi Supabase" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
-                        <i class="fa-solid fa-database text-teal-400"></i>
-                    </button>
-
-                    <!-- GitHub Deployment Help Button -->
-                    <button onclick="openGithubHelpModal()" title="Panduan Hosting GitHub" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
-                        <i class="fa-brands fa-github text-slate-200"></i>
+                        <i class="fa-solid fa-bell text-amber-400"></i>
+                        <span class="hidden md:inline">Monitoring Kalibrasi</span>
+                        <span id="badge-alert-count" class="px-2 py-0.5 text-xs rounded-full bg-rose-600 text-white font-bold">0</span>
                     </button>
 
                     <div class="h-6 w-px bg-slate-700 mx-1"></div>
@@ -112,14 +110,17 @@
         <!-- Sub-Navigation Tabs Bar -->
         <nav class="bg-slate-800 border-t border-slate-700/60 px-4 sm:px-8">
             <div class="max-w-7xl mx-auto flex space-x-1 sm:space-x-4 overflow-x-auto custom-scrollbar text-xs sm:text-sm font-medium py-2">
-                <button id="tab-btn-dashboard" onclick="switchTab('dashboard')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap active-tab text-white bg-brand-600">
+                <button id="tab-btn-dashboard" onclick="switchTab('dashboard')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap bg-brand-600 text-white">
                     <i class="fa-solid fa-chart-pie"></i> Laporan & Dashboard
                 </button>
                 <button id="tab-btn-assets" onclick="switchTab('assets')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-boxes-stacked"></i> Laporan Daftar Aset
+                    <i class="fa-solid fa-boxes-stacked"></i> Daftar Aset Medis
                 </button>
                 <button id="tab-btn-notifications" onclick="switchTab('notifications')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-triangle-exclamation"></i> Monitoring Kalibrasi
+                </button>
+                <button id="tab-btn-maintenance" onclick="switchTab('maintenance')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Riwayat Pemeliharaan
                 </button>
                 <button id="tab-btn-admin" onclick="switchTab('admin')" class="px-3 py-1.5 rounded-md transition text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 whitespace-nowrap text-amber-300 hover:text-amber-200">
                     <i class="fa-solid fa-sliders"></i> Kelola Data (Admin)
@@ -128,18 +129,18 @@
         </nav>
     </header>
 
-      <!-- Main Dynamic View Container -->
+    <!-- Main Dynamic View Container -->
     <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- TAB 1: DASHBOARD & REPORT SUMMARY (PUBLIC VIEW) -->
+        <!-- TAB 1: DASHBOARD & REPORT SUMMARY -->
         <section id="view-dashboard" class="space-y-6">
             <!-- Header Title -->
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div>
                     <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-column text-brand-600"></i> Laporan Ringkasan Aset & Kalibrasi RSUD
+                        <i class="fa-solid fa-chart-column text-brand-600"></i> Ringkasan Aset & Kelaikan Alat Medis
                     </h2>
-                    <p class="text-sm text-slate-500 mt-0.5">Monitoring ketersediaan alat medis, status kelaikan operasional, dan kepatuhan kalibrasi berkala.</p>
+                    <p class="text-sm text-slate-500 mt-0.5">Monitoring otomatis kelaikan operasional, jadwal kalibrasi, dan riwayat pemeliharaan RSUD via Supabase.</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="window.print()" class="px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-2 border border-slate-300 shadow-sm">
@@ -153,19 +154,17 @@
 
             <!-- KPI Metric Cards Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Total Assets Card -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Total Aset Tercatat</p>
                         <h3 id="stat-total-assets" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3>
-                        <p class="text-xs text-slate-500 mt-1">Seluruh unit ruangan</p>
+                        <p class="text-xs text-slate-500 mt-1">Seluruh unit / ruangan</p>
                     </div>
                     <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl font-bold">
                         <i class="fa-solid fa-boxes-stacked"></i>
                     </div>
                 </div>
 
-                <!-- Safe Calibration Card -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Kalibrasi Aman</p>
@@ -177,7 +176,6 @@
                     </div>
                 </div>
 
-                <!-- Calibration Due Soon Card -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Segera Kalibrasi</p>
@@ -189,12 +187,11 @@
                     </div>
                 </div>
 
-                <!-- Overdue Calibration Card -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Expired / Kadaluarsa</p>
                         <h3 id="stat-expired-calibration" class="text-3xl font-extrabold text-rose-600 mt-1">0</h3>
-                        <p class="text-xs text-rose-600 font-medium mt-1">Perlu tindakan cepat</p>
+                        <p class="text-xs text-rose-600 font-medium mt-1">Segera jadwalkan ulang</p>
                     </div>
                     <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold">
                         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -202,12 +199,11 @@
                 </div>
             </div>
 
-            <!-- Dashboard Charts Row -->
+            <!-- Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Calibration Status Breakdown Chart -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-base font-bold text-slate-800">Status Kepatuhan Kalibrasi Aset</h3>
+                        <h3 class="text-base font-bold text-slate-800">Status Kepatuhan Kalibrasi</h3>
                         <span class="text-xs text-slate-400 font-medium">Persentase Kelaikan</span>
                     </div>
                     <div class="relative h-64 flex justify-center items-center">
@@ -215,11 +211,10 @@
                     </div>
                 </div>
 
-                <!-- Category Breakdown Chart -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-base font-bold text-slate-800">Jumlah Aset Per Kategori</h3>
-                        <span class="text-xs text-slate-400 font-medium">Distribusi Aset RSUD</span>
+                        <span class="text-xs text-slate-400 font-medium">Distribusi Alat Medis</span>
                     </div>
                     <div class="relative h-64 flex justify-center items-center">
                         <canvas id="chartKategoriAset"></canvas>
@@ -228,14 +223,13 @@
             </div>
         </section>
 
-        <!-- TAB 2: PUBLIC ASSET REPORT LIST TABLE -->
+        <!-- TAB 2: PUBLIC ASSET REPORT TABLE -->
         <section id="view-assets" class="space-y-6 hidden">
-            <!-- Table Header & Controls -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h2 class="text-xl font-bold text-slate-900">Daftar Laporan Aset RSUD</h2>
-                        <p class="text-sm text-slate-500">Transparansi data inventaris dan status operasional rumah sakit.</p>
+                        <h2 class="text-xl font-bold text-slate-900">Daftar Master Aset RSUD</h2>
+                        <p class="text-sm text-slate-500">Katalog seluruh peralatan kesehatan, lokasi, dan status sertifikasinya.</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="exportDataCSV()" class="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition flex items-center gap-2">
@@ -246,13 +240,11 @@
 
                 <!-- Search and Filter Bar -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                    <!-- Search Input -->
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
                         <input type="text" id="public-search" oninput="renderPublicAssetTable()" placeholder="Cari Nama / Kode Aset / Merk..." class="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
 
-                    <!-- Category Filter -->
                     <div>
                         <select id="public-filter-category" onchange="renderPublicAssetTable()" class="w-full py-2 px-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                             <option value="ALL">Semua Kategori</option>
@@ -264,7 +256,6 @@
                         </select>
                     </div>
 
-                    <!-- Calibration Filter -->
                     <div>
                         <select id="public-filter-calibration" onchange="renderPublicAssetTable()" class="w-full py-2 px-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                             <option value="ALL">Semua Status Kalibrasi</option>
@@ -274,7 +265,6 @@
                         </select>
                     </div>
 
-                    <!-- Condition Filter -->
                     <div>
                         <select id="public-filter-condition" onchange="renderPublicAssetTable()" class="w-full py-2 px-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
                             <option value="ALL">Semua Kondisi Operasional</option>
@@ -293,13 +283,13 @@
                         <thead class="bg-slate-800 text-slate-200 uppercase font-semibold text-[11px] tracking-wider">
                             <tr>
                                 <th class="p-4">Kode Aset</th>
-                                <th class="p-4">Nama Aset / Alat</th>
+                                <th class="p-4">Nama Alat Medis</th>
                                 <th class="p-4">Kategori & Lokasi</th>
                                 <th class="p-4">Merk / Tipe</th>
                                 <th class="p-4">Kondisi</th>
-                                <th class="p-4">Tgl Kalibrasi Terakhir</th>
-                                <th class="p-4">Jatuh Tempo Kalibrasi</th>
-                                <th class="p-4 text-center">Status Kalibrasi</th>
+                                <th class="p-4">Jatuh Tempo</th>
+                                <th class="p-4 text-center">Status</th>
+                                <th class="p-4 text-center">Aksi Fitur</th>
                             </tr>
                         </thead>
                         <tbody id="public-asset-table-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
@@ -307,37 +297,34 @@
                         </tbody>
                     </table>
                 </div>
-                <!-- Pagination Footer -->
                 <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
                     <span id="public-table-info">Menampilkan 0 data</span>
-                    <div id="public-pagination-controls" class="flex gap-1"></div>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 3: CALIBRATION MONITORING & URGENT NOTIFICATIONS -->
+        <!-- TAB 3: CALIBRATION MONITORING -->
         <section id="view-notifications" class="space-y-6 hidden">
-            <!-- Warning Banner Overview -->
             <div class="bg-gradient-to-r from-slate-900 to-rose-950 p-6 rounded-2xl text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-rose-800/40">
                 <div class="space-y-1">
                     <div class="flex items-center gap-2 text-rose-400 font-semibold text-xs tracking-wider uppercase">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Pusat Pengawasan Kalibrasi Alat Kesehatan
+                        <i class="fa-solid fa-triangle-exclamation"></i> Monitoring Jadwal Kalibrasi
                     </div>
-                    <h2 class="text-xl font-bold">Jadwal & Peringatan Dini Kalibrasi Aset</h2>
+                    <h2 class="text-xl font-bold">Peringatan Dini Masa Berlaku Sertifikasi</h2>
                     <p class="text-xs text-slate-300 max-w-2xl">
-                        Aset dengan status <span class="text-rose-400 font-bold">Kadaluarsa</span> tidak direkomendasikan untuk tindakan medis aktif sampai sertifikasi kalibrasi baru diterbitkan oleh Lembaga Pengujian Kelaikan (BPFK/Vendor Terakreditasi).
+                        Alat medis yang telah <span class="text-rose-400 font-bold">Kadaluarsa</span> direkomendasikan untuk segera dilakukan pengujian ulang oleh BPFK/Institusi Penguji Terakreditasi.
                     </p>
                 </div>
                 <div class="bg-rose-900/50 border border-rose-700/50 px-4 py-3 rounded-xl text-center">
-                    <p class="text-xs text-slate-300">Total Butuh Penanganan</p>
+                    <p class="text-xs text-slate-300">Total Butuh Tindakan</p>
                     <p id="urgent-total-count" class="text-2xl font-black text-rose-300">0 Unit</p>
                 </div>
             </div>
 
-            <!-- Overdue Assets Urgent Action Table -->
+            <!-- Overdue Assets Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
                 <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span class="w-3 h-3 rounded-full bg-rose-600"></span> Aset Lewat Jatuh Tempo (Perlu Kalibrasi Segera)
+                    <span class="w-3 h-3 rounded-full bg-rose-600"></span> Aset Lewat Jatuh Tempo (Expired)
                 </h3>
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left text-xs sm:text-sm">
@@ -348,7 +335,7 @@
                                 <th class="p-3">Lokasi / Ruangan</th>
                                 <th class="p-3">Jatuh Tempo</th>
                                 <th class="p-3">Terlambat</th>
-                                <th class="p-3 text-right">Tindakan Admin</th>
+                                <th class="p-3 text-right">Aksi Tindakan</th>
                             </tr>
                         </thead>
                         <tbody id="expired-assets-body" class="divide-y divide-slate-100">
@@ -358,10 +345,10 @@
                 </div>
             </div>
 
-            <!-- Due Soon Assets (Next 30 Days) -->
+            <!-- Due Soon Assets -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
                 <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span class="w-3 h-3 rounded-full bg-amber-500"></span> Aset Jatuh Tempo Dalam 30 Hari Mendatang
+                    <span class="w-3 h-3 rounded-full bg-amber-500"></span> Jatuh Tempo Dalam 30 Hari Mendatang
                 </h3>
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left text-xs sm:text-sm">
@@ -372,7 +359,7 @@
                                 <th class="p-3">Lokasi / Ruangan</th>
                                 <th class="p-3">Jatuh Tempo</th>
                                 <th class="p-3">Sisa Waktu</th>
-                                <th class="p-3 text-right">Tindakan Admin</th>
+                                <th class="p-3 text-right">Aksi Tindakan</th>
                             </tr>
                         </thead>
                         <tbody id="duesoon-assets-body" class="divide-y divide-slate-100">
@@ -383,41 +370,77 @@
             </div>
         </section>
 
-        <!-- TAB 4: ADMIN PORTAL (CRUD MANAGEMENT) -->
+        <!-- TAB 4: MAINTENANCE HISTORY -->
+        <section id="view-maintenance" class="space-y-6 hidden">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-screwdriver-wrench text-brand-600"></i> Riwayat Pemeliharaan & Perbaikan
+                    </h2>
+                    <p class="text-sm text-slate-500">Catatan kronologis *preventive maintenance*, servis teknis, dan perbaikan alat medis RSUD.</p>
+                </div>
+                <div>
+                    <button onclick="openAddMaintenanceModal()" class="px-4 py-2 text-xs sm:text-sm font-semibold bg-brand-600 hover:bg-brand-500 text-white rounded-xl transition flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-plus-circle"></i> Tambah Catatan Pemeliharaan
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="bg-slate-800 text-slate-200 uppercase font-semibold text-[11px] tracking-wider">
+                            <tr>
+                                <th class="p-4">Tanggal Servis</th>
+                                <th class="p-4">Kode / Nama Alat</th>
+                                <th class="p-4">Jenis Tindakan</th>
+                                <th class="p-4">Teknisi / Vendor</th>
+                                <th class="p-4">Biaya (Rp)</th>
+                                <th class="p-4">Catatan / Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintenance-logs-body" class="divide-y divide-slate-100 text-slate-700 font-medium">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: ADMIN PORTAL -->
         <section id="view-admin" class="space-y-6 hidden">
-            <!-- Admin Authorization Shield -->
             <div id="admin-lock-screen" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center space-y-4 max-w-md mx-auto my-12">
                 <div class="w-16 h-16 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mx-auto text-2xl font-bold">
                     <i class="fa-solid fa-lock"></i>
                 </div>
                 <div>
-                    <h2 class="text-xl font-bold text-slate-900">Akses Terbatas Khusus Admin</h2>
-                    <p class="text-xs text-slate-500 mt-1">Silakan login sebagai pengelola SIMA-RSUD untuk menambah, mengubah, mengedit, dan menghapus data aset maupun jadwal kalibrasi.</p>
+                    <h2 class="text-xl font-bold text-slate-900">Akses Terbatas Admin</h2>
+                    <p class="text-xs text-slate-500 mt-1">Silakan login sebagai pengelola SIMA-RSUD untuk mengelola data, melakukan import Excel, dan mengedit master aset.</p>
                 </div>
                 <button onclick="openLoginModal()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm transition shadow-sm">
                     Login Pengelola RSUD
                 </button>
             </div>
 
-            <!-- Admin Active Panel -->
             <div id="admin-active-panel" class="space-y-6 hidden">
-                <!-- Admin Header Toolbar -->
                 <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <div class="flex items-center gap-2 text-xs font-semibold text-teal-400 uppercase tracking-wider">
-                            <i class="fa-solid fa-user-shield"></i> Portal Operasional Administrator
+                        <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                            <i class="fa-solid fa-user-shield"></i> Portal Admin Supabase Realtime
                         </div>
-                        <h2 class="text-xl font-bold text-white mt-1">Pengelolaan Data Aset & Entri Kalibrasi</h2>
-                        <p class="text-xs text-slate-400">Anda dapat memutakhirkan data alat rumah sakit secara konsisten.</p>
+                        <h2 class="text-xl font-bold text-white mt-1">Kelola Master Data & Import File</h2>
+                        <p class="text-xs text-slate-400">Sinkronisasi data otomatis secara realtime ke seluruh pengguna.</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button onclick="openAssetFormModal()" class="px-4 py-2.5 text-xs sm:text-sm font-semibold bg-brand-500 hover:bg-brand-400 text-white rounded-xl transition flex items-center gap-2 shadow-lg">
-                            <i class="fa-solid fa-plus-circle text-base"></i> Tambah Aset Baru
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <button onclick="openImportModal()" class="px-3.5 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition flex items-center gap-2 shadow-md">
+                            <i class="fa-solid fa-file-import"></i> Import Excel / CSV
+                        </button>
+                        <button onclick="openAssetFormModal()" class="px-3.5 py-2 text-xs font-semibold bg-brand-500 hover:bg-brand-400 text-white rounded-xl transition flex items-center gap-2 shadow-md">
+                            <i class="fa-solid fa-plus-circle"></i> Tambah Aset Baru
                         </button>
                     </div>
                 </div>
 
-                <!-- Admin Asset Table -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-4 p-4">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2 pt-2">
                         <h3 class="text-base font-bold text-slate-900">Master Data Aset RSUD</h3>
@@ -437,8 +460,7 @@
                                     <th class="p-3">Lokasi / Ruang</th>
                                     <th class="p-3">Kondisi</th>
                                     <th class="p-3">Jatuh Tempo</th>
-                                    <th class="p-3 text-center">Status</th>
-                                    <th class="p-3 text-right">Aksi Kelola</th>
+                                    <th class="p-3 text-center">Aksi Fitur</th>
                                 </tr>
                             </thead>
                             <tbody id="admin-asset-table-body" class="divide-y divide-slate-100 font-medium">
@@ -455,14 +477,210 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print mt-auto">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-            <p>&copy; 2026 RSUD - Sistem Informasi Management Aset & Pengawasan Kalibrasi Terpadu.</p>
-            <p class="flex items-center gap-2 text-slate-400">
-                <span id="footer-db-status" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Local Storage</span>
+            <p>&copy; 2026 RSUD - Sistem Informasi Manajemen Aset, Kalibrasi & Pemeliharaan Terpadu.</p>
+            <p class="flex items-center gap-2 text-slate-500 font-medium">
+                <span id="footer-db-status" class="flex items-center gap-1.5 text-emerald-600 font-semibold"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Supabase Realtime Database</span>
             </p>
         </div>
     </footer>
 
-    <!-- MODAL 1: ADD / EDIT ASSET FORM MODAL -->
+
+    <!-- MODAL 1: CETAK SERTIFIKAT KALIBRASI -->
+    <div id="modal-certificate" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div class="p-4 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between no-print">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-file-contract text-amber-400"></i> Pratinjau Sertifikat Kalibrasi & Kelaikan
+                </h3>
+                <div class="flex items-center gap-2">
+                    <button onclick="window.print()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-print"></i> Cetak Sertifikat
+                    </button>
+                    <button onclick="closeCertificateModal()" class="text-slate-400 hover:text-white text-xl ml-2">&times;</button>
+                </div>
+            </div>
+
+            <!-- Printable Certificate Body -->
+            <div id="certificate-print-area" class="p-8 sm:p-12 space-y-6 text-slate-900">
+                <div class="border-b-4 border-double border-slate-800 pb-4 flex items-center justify-between gap-4">
+                    <div class="w-16 h-16 rounded-full bg-slate-800 text-white flex items-center justify-center text-3xl font-bold flex-shrink-0">
+                        <i class="fa-solid fa-hospital-user"></i>
+                    </div>
+                    <div class="text-center flex-grow">
+                        <h2 class="text-lg font-black uppercase tracking-wide">RUMAH SAKIT UMUM DAERAH (RSUD)</h2>
+                        <h3 class="text-xs font-bold text-slate-600 uppercase tracking-widest">INSTALASI PEMELIHARAAN SARANA RUMAH SAKIT (IPSRS)</h3>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Jl. Kesehatan Hospitalia No. 123 | Telp: (021) 555-RSUD | Email: ipsrs@rsud-daerah.go.id</p>
+                    </div>
+                    <div id="cert-qr-container" class="w-16 h-16 border p-1 rounded bg-white flex items-center justify-center flex-shrink-0"></div>
+                </div>
+
+                <div class="text-center space-y-1">
+                    <h1 class="text-base font-extrabold uppercase tracking-wider underline text-slate-900">SERTIFIKAT KALIBRASI & KELAIKAN ALAT MEDIS</h1>
+                    <p id="cert-number" class="text-xs font-mono font-bold text-slate-600">No: CERT/RSUD/2026/001</p>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <p class="font-bold text-slate-800 uppercase tracking-wider text-[11px] border-b pb-1">I. IDENTITAS PERALATAN KESEHATAN</p>
+                    <table class="w-full text-left border-collapse">
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600 w-1/3">Nama Alat Medis</td><td class="py-1 font-bold text-slate-900" id="cert-asset-name">-</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Kode Unique Aset</td><td class="py-1 font-mono font-bold text-brand-700" id="cert-asset-code">-</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Merk / Model / Tipe</td><td class="py-1" id="cert-asset-brand">-</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Nomor Seri (Serial No)</td><td class="py-1 font-mono" id="cert-asset-serial">-</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Lokasi / Ruangan</td><td class="py-1 font-semibold" id="cert-asset-location">-</td></tr>
+                    </table>
+
+                    <p class="font-bold text-slate-800 uppercase tracking-wider text-[11px] border-b pb-1 pt-2">II. HASIL PENGUJIANKALIBRASI</p>
+                    <table class="w-full text-left border-collapse">
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600 w-1/3">Tanggal Pelaksanaan</td><td class="py-1 font-bold" id="cert-last-calibrated">-</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Berlaku Sampai Dengan</td><td class="py-1 font-bold text-emerald-700" id="cert-due-date">-</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Lembaga / Penguji</td><td class="py-1" id="cert-tester">BPFK / Tim Elektromedis RSUD</td></tr>
+                        <tr class="border-b border-slate-100 py-1.5"><td class="py-1 font-semibold text-slate-600">Hasil Evaluasi Kelaikan</td><td class="py-1 font-black text-emerald-700 uppercase tracking-wider">LAIK PAKAI (PASSED)</td></tr>
+                    </table>
+                </div>
+
+                <div class="pt-8 flex items-end justify-between text-xs">
+                    <div class="text-center space-y-12">
+                        <p class="text-slate-500 font-medium">Petugas Elektromedis Penguji,</p>
+                        <div>
+                            <p class="font-bold underline text-slate-900">( Teknisi Elektromedis SKM )</p>
+                            <p class="text-[10px] text-slate-500">NIP. 19880412 201503 1 002</p>
+                        </div>
+                    </div>
+                    <div class="text-center space-y-12">
+                        <p class="text-slate-500 font-medium">Kepala IPSRS RSUD,</p>
+                        <div>
+                            <p class="font-bold underline text-slate-900">( Kepala Instalasi Sarpras )</p>
+                            <p class="text-[10px] text-slate-500">NIP. 19790105 200604 2 001</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: GENERATE QR CODE STICKER -->
+    <div id="modal-qr-code" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 text-center">
+            <div class="flex items-center justify-between border-b pb-2">
+                <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-brand-600"></i> Label Stiker QR Code Alat
+                </h3>
+                <button onclick="closeQRModal()" class="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
+            </div>
+
+            <div id="qr-sticker-area" class="border-2 border-dashed border-slate-300 p-4 rounded-2xl bg-slate-50 space-y-3">
+                <p class="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">PROPERTY OF RSUD</p>
+                <div id="qr-code-element" class="flex justify-center my-2 p-2 bg-white rounded-xl shadow-inner border inline-block"></div>
+                <div>
+                    <h4 id="qr-asset-name" class="font-bold text-slate-900 text-xs">Nama Alat</h4>
+                    <p id="qr-asset-code" class="font-mono text-xs font-bold text-brand-700">AST-MED-000</p>
+                    <p id="qr-asset-location" class="text-[11px] text-slate-500 mt-1">Lokasi Ruangan</p>
+                </div>
+                <div class="bg-emerald-100 border border-emerald-300 text-emerald-800 py-1 px-2 rounded-lg text-[10px] font-bold">
+                    Jatuh Tempo: <span id="qr-asset-due">-</span>
+                </div>
+            </div>
+
+            <div class="pt-2 flex gap-2">
+                <button onclick="window.print()" class="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-print"></i> Cetak Label Stiker
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: IMPORT DATA EXCEL / CSV -->
+    <div id="modal-import-excel" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel text-emerald-600"></i> Import Data Aset Excel / CSV
+                </h3>
+                <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
+            </div>
+
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Unggah berkas Excel (<code class="bg-slate-100 px-1 font-mono text-slate-800">.xlsx</code>) atau CSV. Data akan otomatis disinkronkan ke Supabase database.
+            </p>
+
+            <div class="border-2 border-dashed border-slate-300 hover:border-emerald-500 p-6 rounded-2xl bg-slate-50 text-center space-y-2 cursor-pointer transition">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-emerald-600"></i>
+                <p class="text-xs font-semibold text-slate-700">Pilih Berkas Excel / CSV</p>
+                <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelFileSelect(event)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+            </div>
+
+            <div class="bg-slate-100 p-3 rounded-xl text-[11px] text-slate-600 space-y-1">
+                <p class="font-bold text-slate-800">Format Kolom Excel yang Dibutuhkan:</p>
+                <p class="font-mono text-[10px] text-slate-500">code, name, category, location, brand, serial, condition, due_date</p>
+                <button onclick="downloadExcelTemplate()" class="text-brand-600 hover:underline font-bold mt-1 inline-block">
+                    <i class="fa-solid fa-download"></i> Unduh Contoh Template Excel
+                </button>
+            </div>
+
+            <div class="pt-2 flex justify-end gap-2">
+                <button type="button" onclick="closeImportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: RECORD MAINTENANCE LOG FORM -->
+    <div id="modal-add-maintenance" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-screwdriver-wrench text-brand-400"></i> Tambah Catatan Pemeliharaan
+                </h3>
+                <button onclick="closeAddMaintenanceModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+            </div>
+            <form onsubmit="handleMaintenanceSubmit(event)" class="p-6 space-y-4 text-xs sm:text-sm">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Pilih Alat / Aset Medis <span class="text-rose-500">*</span></label>
+                    <select id="maint-asset-id" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <!-- JS populated options -->
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Tanggal Tindakan <span class="text-rose-500">*</span></label>
+                        <input type="date" id="maint-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Jenis Tindakan <span class="text-rose-500">*</span></label>
+                        <select id="maint-type" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="Pemeliharaan Rutin">Pemeliharaan Rutin (Preventive)</option>
+                            <option value="Perbaikan Teknis">Perbaikan Teknis (Corrective)</option>
+                            <option value="Pengujian Kalibrasi">Pengujian Kalibrasi</option>
+                            <option value="Penggantian Sparepart">Penggantian Sparepart</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Teknisi / Vendor Penguji</label>
+                        <input type="text" id="maint-technician" placeholder="Contoh: IPSRS / PT Sinar Medika" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Biaya Perbaikan / Servis (Rp)</label>
+                        <input type="number" id="maint-cost" placeholder="0" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Deskripsi / Catatan Perbaikan <span class="text-rose-500">*</span></label>
+                    <textarea id="maint-notes" required rows="2" placeholder="Detail tindakan perbaikan atau komponen yang diganti..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeAddMaintenanceModal()" class="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-white bg-brand-600 hover:bg-brand-500 rounded-xl font-semibold transition shadow-md">Simpan Catatan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: ADD / EDIT ASSET FORM -->
     <div id="modal-asset-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white rounded-t-2xl">
@@ -522,11 +740,6 @@
                     </div>
                 </div>
 
-                <hr class="border-slate-100 my-2">
-                <p class="font-bold text-slate-800 text-xs uppercase tracking-wider text-brand-600 flex items-center gap-1.5">
-                    <i class="fa-solid fa-calendar-check"></i> Pengaturan Periode & Jadwal Kalibrasi
-                </p>
-
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Frekuensi Kalibrasi</label>
@@ -546,11 +759,6 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Catatan Tambahan / Spesifikasi Alat</label>
-                    <textarea id="field-notes" rows="2" placeholder="Catatan khusus kondisi atau lembaga penguji..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                </div>
-
                 <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                     <button type="button" onclick="closeAssetFormModal()" class="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition">Batal</button>
                     <button type="submit" class="px-5 py-2 text-white bg-brand-600 hover:bg-brand-500 rounded-xl font-semibold transition shadow-md">Simpan Data Aset</button>
@@ -559,161 +767,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: RECORD CALIBRATION ACTION MODAL -->
-    <div id="modal-calibrate-action" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-            <div class="p-5 border-b border-slate-100 bg-emerald-700 text-white flex items-center justify-between">
-                <h3 class="text-base font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-stamp"></i> Catat Hasil Kalibrasi Baru
-                </h3>
-                <button onclick="closeCalibrateModal()" class="text-emerald-200 hover:text-white text-lg">&times;</button>
-            </div>
-            <form id="form-calibrate-record" onsubmit="handleCalibrateSubmit(event)" class="p-6 space-y-4 text-xs sm:text-sm">
-                <input type="hidden" id="calib-asset-id">
-                
-                <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 space-y-1">
-                    <p class="text-xs uppercase font-bold text-emerald-700">Aset yang Dikalibrasi:</p>
-                    <p id="calib-asset-name-display" class="font-bold text-sm">Nama Alat</p>
-                    <p id="calib-asset-code-display" class="text-xs text-emerald-800">Kode Aset</p>
-                </div>
-
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Tanggal Pelaksanaan Kalibrasi <span class="text-rose-500">*</span></label>
-                    <input type="date" id="calib-date-performed" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Lembaga / BPFK / Teknisi Penguji</label>
-                    <input type="text" id="calib-tester" placeholder="Contoh: BPFK Surakarta / PT Sinar Medika" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Nomor Sertifikat Kalibrasi</label>
-                    <input type="text" id="calib-certificate-no" placeholder="Contoh: CERT/BPFK/2026/0912" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                </div>
-
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Berlaku Sampai Tanggal (Jatuh Tempo Baru) <span class="text-rose-500">*</span></label>
-                    <input type="date" id="calib-next-due" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-700">
-                </div>
-
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
-                    <button type="button" onclick="closeCalibrateModal()" class="px-4 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition">Batal</button>
-                    <button type="submit" class="px-5 py-2 text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold transition shadow-md">Perbarui Kalibrasi</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL 3: SUPABASE DATABASE CONFIG & SQL SCRIPT -->
-    <div id="modal-supabase-config" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
-            <div class="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between rounded-t-2xl">
-                <h3 class="text-base font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-database text-teal-400"></i> Pengaturan Koneksi Supabase Database
-                </h3>
-                <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
-            </div>
-
-            <div class="p-6 space-y-5 text-xs sm:text-sm">
-                <p class="text-slate-600 leading-relaxed">
-                    Aplikasi ini dapat dihubungkan langsung ke **Supabase** secara gratis. Isikan **Project URL** dan **Anon Key** dari dashboard Supabase Anda.
-                </p>
-
-                <div class="space-y-3">
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Supabase Project URL</label>
-                        <input type="text" id="cfg-supabase-url" placeholder="https://xyzcompany.supabase.co" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500">
-                    </div>
-                    <div>
-                        <label class="block font-semibold text-slate-700 mb-1">Supabase Anon Key</label>
-                        <input type="text" id="cfg-supabase-key" placeholder="eyJhY2... (Anon public key)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500">
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3 pt-2">
-                    <button onclick="saveSupabaseConfig()" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-xl transition shadow-sm">
-                        Simpan Koneksi & Test
-                    </button>
-                    <button onclick="resetToLocalDB()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">
-                        Gunakan Local Storage
-                    </button>
-                </div>
-
-                <hr class="border-slate-200">
-
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-bold text-slate-800">Skrip DDL SQL untuk Supabase (Salin ke SQL Editor Supabase):</h4>
-                        <button onclick="copySQLSchema()" class="text-xs bg-slate-800 text-white px-2.5 py-1 rounded-lg hover:bg-slate-700">
-                            <i class="fa-solid fa-copy"></i> Salin SQL
-                        </button>
-                    </div>
-                    <pre class="bg-slate-900 text-teal-300 p-4 rounded-xl text-[11px] font-mono overflow-x-auto border border-slate-800 select-all">
-CREATE TABLE assets (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  code TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  location TEXT NOT NULL,
-  brand TEXT,
-  serial TEXT,
-  condition TEXT DEFAULT 'Baik',
-  interval_months INT DEFAULT 12,
-  last_calibrated DATE,
-  due_date DATE NOT NULL,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Buka akses publik/anonim untuk laporan & admin CRUD (atau sesuaikan RLS)
-ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public Read Access" ON assets FOR SELECT USING (true);
-CREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);
-                    </pre>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 4: GITHUB PAGES DEPLOYMENT GUIDE -->
-    <div id="modal-github-help" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
-            <div class="p-5 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between rounded-t-2xl">
-                <h3 class="text-base font-bold flex items-center gap-2">
-                    <i class="fa-brands fa-github text-slate-300"></i> Panduan Hosting Gratis di GitHub Pages
-                </h3>
-                <button onclick="closeGithubHelpModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
-            </div>
-
-            <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                <ol class="list-decimal list-inside space-y-3 font-medium">
-                    <li>
-                        <strong class="text-slate-900">Buat Repositori Baru di GitHub:</strong>
-                        <p class="text-slate-500 pl-5 pt-1">Buka GitHub.com, pilih <em>New Repository</em>, beri nama misal <code class="bg-slate-100 px-1 rounded text-slate-800">sima-rsud</code>, lalu set ke Public.</p>
-                    </li>
-                    <li>
-                        <strong class="text-slate-900">Simpan File Ini Sebagai <code class="bg-slate-100 px-1 rounded text-slate-800">index.html</code>:</strong>
-                        <p class="text-slate-500 pl-5 pt-1">Simpan semua file kode HTML tunggal ini dengan nama file persis <code class="bg-slate-100 px-1 rounded text-slate-800">index.html</code>.</p>
-                    </li>
-                    <li>
-                        <strong class="text-slate-900">Upload File ke GitHub:</strong>
-                        <p class="text-slate-500 pl-5 pt-1">Klik <em>Upload an existing file</em> di halaman repositori GitHub Anda, upload file <code class="bg-slate-100 px-1 rounded text-slate-800">index.html</code>, lalu klik <em>Commit changes</em>.</p>
-                    </li>
-                    <li>
-                        <strong class="text-slate-900">Aktifkan GitHub Pages:</strong>
-                        <p class="text-slate-500 pl-5 pt-1">Masuk ke menu <strong>Settings</strong> &rarr; <strong>Pages</strong>. Pada bagian <em>Build and deployment / Branch</em>, pilih branch <code class="bg-slate-100 px-1 rounded text-slate-800">main</code> (root), lalu klik <strong>Save</strong>.</p>
-                    </li>
-                    <li>
-                        <strong class="text-slate-900">Aplikasi Siap Diakses!</strong>
-                        <p class="text-slate-500 pl-5 pt-1">Website SIMA-RSUD Anda akan aktif dalam 1-2 menit pada URL: <code class="bg-brand-50 text-brand-700 font-mono px-1.5 py-0.5 rounded">https://username.github.io/sima-rsud/</code></p>
-                    </li>
-                </ol>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 5: LOGIN ADMIN MODAL -->
+    <!-- MODAL 6: LOGIN ADMIN -->
     <div id="modal-login" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
             <div class="text-center space-y-1">
@@ -721,7 +775,7 @@ CREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);
                     <i class="fa-solid fa-user-lock"></i>
                 </div>
                 <h3 class="text-lg font-bold text-slate-900">Login Admin RSUD</h3>
-                <p class="text-xs text-slate-500">Masukkan kata sandi otorisasi petugas aset.</p>
+                <p class="text-xs text-slate-500">Masukkan kata sandi pengelola SIMA-RSUD.</p>
             </div>
 
             <form onsubmit="handleLoginSubmit(event)" class="space-y-3 text-xs sm:text-sm">
@@ -732,7 +786,7 @@ CREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Password</label>
                     <input type="password" id="login-password" value="admin123" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    <p class="text-[10px] text-slate-400 mt-1">Default Password Demo: <span class="font-bold text-slate-600">admin123</span></p>
+                    <p class="text-[10px] text-slate-400 mt-1">Default Demo Password: <span class="font-bold text-slate-600">admin123</span></p>
                 </div>
                 <div class="pt-2 flex gap-2">
                     <button type="button" onclick="closeLoginModal()" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition">Batal</button>
@@ -742,61 +796,27 @@ CREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);
         </div>
     </div>
 
-    <!-- CUSTOM NOTIFICATION MODAL ALERTS -->
+    <!-- CUSTOM TOAST ALERT -->
     <div id="custom-toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none text-xs sm:text-sm">
         <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
         <span id="toast-message">Pesan notifikasi</span>
     </div>
 
+    <!-- SUPABASE CLIENT & SCRIPT INTEGRATION -->
     <script>
-unction switchTab(tabId) {
-    // 1. Logika lama Anda untuk menyembunyikan/menampilkan tab tetap di sini
-    // Contoh asumsi logika lama Anda:
-    // document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    // document.getElementById('view-' + tabId).classList.remove('hidden');
-    
-    // 2. TAMBAHKAN LOGIKA INI untuk memperbarui URL tanpa me-reload halaman
-    const url = new URL(window.location);
-    url.searchParams.set('tab', tabId);
-    window.history.pushState({}, '', url);
-}
-        
-    </script>
+        // CONFIG KONFIGURASI SUPABASE
+        // Ganti dengan SUPABASE_URL & SUPABASE_ANON_KEY milik Anda sendiri dari Supabase Dashboard
+        const SUPABASE_URL = "https://wzmjdlxnjoyzzvzpmhqj.supabase.co"; 
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bWpkbHhuam95enp2enBtaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwMTU2NjgsImV4cCI6MjEwNTU5MTY2OH0.i8LtB72RGso_--VhWNQVpjFr44dHK_pYpRqsuMkCQ4c";
 
-    <script> document.addEventListener("DOMContentLoaded", function() {
-    // Ambil parameter 'tab' dari URL pembagi
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTab = urlParams.get('tab');
-
-    // Jika ada parameter tab di URL, langsung arahkan ke tab tersebut
-    if (activeTab) {
-        switchTab(activeTab);
-    } else {
-        // Jika tidak ada parameter di link, arahkan ke default (dashboard)
-        switchTab('dashboard');
-    }
-}); </script>
-
-
-    <script> function filterKategori(kategori) {
-    const url = new URL(window.location);
-    url.searchParams.set('kategori', kategori);
-    window.history.pushState({}, '', url);
-    
-    // panggil fungsi fetch data Supabase Anda di bawahnya...
-}</script>
-    
-    <script>
-        // APP INITIAL STATE & STORAGE CONFIGURATION
-        let assets = [];
         let supabaseClient = null;
+        let assets = [];
+        let maintenanceLogs = [];
         let isAdminLoggedIn = false;
-        let currentTab = 'dashboard';
 
-        // Sample initial datasets for RSUD
-        const DEFAULT_ASSETS = [
+        // Default initial assets if database empty or disconnected
+        const INITIAL_ASSETS = [
             {
-                id: '101',
                 code: 'AST-MED-2025-001',
                 name: 'Ventilator Transport ICU',
                 category: 'Medis',
@@ -806,11 +826,9 @@ unction switchTab(tabId) {
                 condition: 'Baik',
                 interval_months: 12,
                 last_calibrated: '2025-02-10',
-                due_date: '2026-02-10',
-                notes: 'Kalibrasi oleh BPFK Surakarta'
+                due_date: '2026-02-10'
             },
             {
-                id: '102',
                 code: 'AST-MED-2025-002',
                 name: 'Defibrillator Biphasic Monitor',
                 category: 'Medis',
@@ -820,11 +838,9 @@ unction switchTab(tabId) {
                 condition: 'Baik',
                 interval_months: 12,
                 last_calibrated: '2025-11-01',
-                due_date: '2026-11-01',
-                notes: 'Siap pakai'
+                due_date: '2026-11-01'
             },
             {
-                id: '103',
                 code: 'AST-RAD-2024-005',
                 name: 'Mobile X-Ray Digital',
                 category: 'Radiologi',
@@ -834,11 +850,9 @@ unction switchTab(tabId) {
                 condition: 'Baik',
                 interval_months: 12,
                 last_calibrated: '2025-08-15',
-                due_date: '2026-08-15',
-                notes: 'Pemeriksaan uji kesesuaian radiasi'
+                due_date: '2026-08-15'
             },
             {
-                id: '104',
                 code: 'AST-LAB-2024-012',
                 name: 'Hematology Analyzer 5 Part',
                 category: 'Laboratorium',
@@ -848,100 +862,180 @@ unction switchTab(tabId) {
                 condition: 'Perbaikan',
                 interval_months: 6,
                 last_calibrated: '2025-09-01',
-                due_date: '2026-03-01',
-                notes: 'Perlu penggantian probe reagent'
-            },
-            {
-                id: '105',
-                code: 'AST-KPR-2025-088',
-                name: 'Infusion Pump Digital',
-                category: 'Keperawatan',
-                location: 'Ruang Perawatan VIP Melati',
-                brand: 'Terumo TE-171',
-                serial: 'SN-8820192',
-                condition: 'Baik',
-                interval_months: 12,
-                last_calibrated: '2024-10-10',
-                due_date: '2025-10-10',
-                notes: 'Kadaluarsa - Butuh Kalibrasi Ulang!'
+                due_date: '2026-03-01'
             }
         ];
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            initSupabaseFromStorage();
-            await loadAssetsData();
-            checkAdminSession();
-            renderAllViews();
-        });
-
-        function initSupabaseFromStorage() {
-            const url = localStorage.getItem('RSUD_SUPABASE_URL');
-            const key = localStorage.getItem('RSUD_SUPABASE_KEY');
-
-            if (url && key && window.supabase) {
-                try {
-                    supabaseClient = window.supabase.createClient(url, key);
-                    document.getElementById('db-warning-banner').classList.add('hidden');
-                    document.getElementById('footer-db-status').innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Terhubung Supabase Database`;
-                    document.getElementById('cfg-supabase-url').value = url;
-                    document.getElementById('cfg-supabase-key').value = key;
-                } catch (err) {
-                    console.error('Supabase init error:', err);
-                    supabaseClient = null;
+        // Inisialisasi Supabase
+        function initSupabase() {
+            try {
+                if (window.supabase && SUPABASE_URL.startsWith("https://")) {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    fetchAssetsFromSupabase();
+                    fetchMaintenanceLogsFromSupabase();
+                    subscribeRealtimeSupabase();
+                } else {
+                    console.warn("Konfigurasi Supabase belum diset. Menjalankan mode Local Fallback.");
+                    loadLocalFallback();
                 }
+            } catch (err) {
+                console.error("Gagal mengkoneksikan ke Supabase:", err);
+                loadLocalFallback();
             }
         }
 
-        async function loadAssetsData() {
-            if (supabaseClient) {
-                try {
-                    const { data, error } = await supabaseClient.from('assets').select('*').order('created_at', { ascending: false });
-                    if (error) throw error;
-                    if (data && data.length > 0) {
-                        assets = data;
-                        return;
-                    }
-                } catch (err) {
-                    console.warn('Gagal memuat dari Supabase, beralih ke local storage:', err);
-                }
-            }
+        // Ambil Data Assets dari Supabase
+        async function fetchAssetsFromSupabase() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('assets')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-            // Fallback Local Storage
-            const localData = localStorage.getItem('RSUD_ASSETS_DATA');
-            if (localData) {
-                assets = JSON.parse(localData);
+            if (error) {
+                console.error("Error fetching assets:", error);
+                loadLocalFallback();
             } else {
-                assets = DEFAULT_ASSETS;
-                saveAssetsToLocalStorage();
+                if (data && data.length > 0) {
+                    assets = data;
+                } else {
+                    // Seed awal jika tabel kosong
+                    seedInitialData();
+                }
+                renderAllViews();
             }
         }
 
-        function saveAssetsToLocalStorage() {
-            localStorage.setItem('RSUD_ASSETS_DATA', JSON.stringify(assets));
+        // Ambil Data Maintenance Logs dari Supabase
+        async function fetchMaintenanceLogsFromSupabase() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('maintenance_logs')
+                .select('*')
+                .order('date', { ascending: false });
+
+            if (!error && data) {
+                maintenanceLogs = data;
+                renderMaintenanceLogsTable();
+            }
         }
 
-        async function syncAssetToDatabase(asset) {
+        // Berlangganan Realtime Postgres Changes
+        function subscribeRealtimeSupabase() {
+            if (!supabaseClient) return;
+
+            // Realtime listener untuk tabel assets
+            supabaseClient
+                .channel('public:assets')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'assets' }, payload => {
+                    fetchAssetsFromSupabase();
+                })
+                .subscribe();
+
+            // Realtime listener untuk tabel maintenance_logs
+            supabaseClient
+                .channel('public:maintenance_logs')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_logs' }, payload => {
+                    fetchMaintenanceLogsFromSupabase();
+                })
+                .subscribe();
+        }
+
+        async function seedInitialData() {
+            if (!supabaseClient) return;
+            for (const item of INITIAL_ASSETS) {
+                await supabaseClient.from('assets').insert([item]);
+            }
+            fetchAssetsFromSupabase();
+        }
+
+        function loadLocalFallback() {
+            const saved = localStorage.getItem('SIMA_RSUD_LOCAL');
+            if (saved) assets = JSON.parse(saved);
+            else assets = INITIAL_ASSETS;
+            renderAllViews();
+        }
+
+        function saveLocalState() {
+            localStorage.setItem('SIMA_RSUD_LOCAL', JSON.stringify(assets));
+        }
+
+        // SUPABASE CRUD OPERATIONS
+        window.saveAssetToCloud = async function(assetData, id = null) {
             if (supabaseClient) {
                 try {
-                    const { error } = await supabaseClient.from('assets').upsert(asset);
-                    if (error) console.error('Error Sync Supabase:', error);
-                } catch (e) {
-                    console.error('Supabase save exception:', e);
+                    if (id) {
+                        const { error } = await supabaseClient
+                            .from('assets')
+                            .update(assetData)
+                            .eq('id', id);
+                        if (error) throw error;
+                    } else {
+                        const { error } = await supabaseClient
+                            .from('assets')
+                            .insert([assetData]);
+                        if (error) throw error;
+                    }
+                    showToast("Data aset berhasil disimpan ke Supabase Realtime!");
+                    fetchAssetsFromSupabase();
+                } catch (err) {
+                    console.error("Supabase Save Error:", err);
+                    showToast("Gagal menyimpan ke Supabase.", "error");
                 }
+            } else {
+                // Fallback Mode
+                if (id) {
+                    const idx = assets.findIndex(a => a.id === id);
+                    if (idx !== -1) assets[idx] = { ...assets[idx], ...assetData };
+                } else {
+                    assetData.id = 'LOCAL_' + Date.now();
+                    assets.unshift(assetData);
+                }
+                saveLocalState();
+                renderAllViews();
+                showToast("Tersimpan dalam mode offline/lokal.");
             }
-            saveAssetsToLocalStorage();
         }
 
-        async function deleteAssetFromDatabase(id) {
+        window.deleteAssetFromCloud = async function(id) {
             if (supabaseClient) {
                 try {
-                    await supabaseClient.from('assets').delete().eq('id', id);
-                } catch (e) {
-                    console.error('Supabase delete error:', e);
+                    const { error } = await supabaseClient
+                        .from('assets')
+                        .delete()
+                        .eq('id', id);
+                    if (error) throw error;
+                    showToast("Data aset berhasil dihapus dari Supabase.", "info");
+                    fetchAssetsFromSupabase();
+                } catch (err) {
+                    console.error("Delete Error:", err);
                 }
+            } else {
+                assets = assets.filter(a => a.id !== id);
+                saveLocalState();
+                renderAllViews();
+                showToast("Aset dihapus (Lokal).", "info");
             }
-            assets = assets.filter(a => a.id !== id);
-            saveAssetsToLocalStorage();
+        }
+
+        window.addMaintenanceLogToCloud = async function(logData) {
+            if (supabaseClient) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('maintenance_logs')
+                        .insert([logData]);
+                    if (error) throw error;
+                    showToast("Catatan pemeliharaan tersimpan di Supabase!");
+                    fetchMaintenanceLogsFromSupabase();
+                } catch (err) {
+                    console.error("Log error:", err);
+                }
+            } else {
+                logData.id = 'M_' + Date.now();
+                maintenanceLogs.unshift(logData);
+                renderMaintenanceLogsTable();
+                showToast("Pemeliharaan dicatat secara lokal.");
+            }
         }
 
         function getCalibrationStatus(dueDateStr) {
@@ -985,13 +1079,12 @@ unction switchTab(tabId) {
             renderPublicAssetTable();
             renderNotificationTables();
             renderAdminAssetTable();
+            populateMaintenanceAssetDropdown();
         }
 
         function updateMetricsAndAlerts() {
             let total = assets.length;
-            let safe = 0;
-            let dueSoon = 0;
-            let expired = 0;
+            let safe = 0, dueSoon = 0, expired = 0;
 
             assets.forEach(asset => {
                 const cal = getCalibrationStatus(asset.due_date);
@@ -1027,7 +1120,6 @@ unction switchTab(tabId) {
                 categories[cat] = (categories[cat] || 0) + 1;
             });
 
-            // Status Doughnut Chart
             const ctxStatus = document.getElementById('chartStatusKalibrasi').getContext('2d');
             if (chartStatusInstance) chartStatusInstance.destroy();
             chartStatusInstance = new Chart(ctxStatus, {
@@ -1046,7 +1138,6 @@ unction switchTab(tabId) {
                 }
             });
 
-            // Kategori Bar Chart
             const ctxKategori = document.getElementById('chartKategoriAset').getContext('2d');
             if (chartKategoriInstance) chartKategoriInstance.destroy();
             chartKategoriInstance = new Chart(ctxKategori, {
@@ -1069,7 +1160,7 @@ unction switchTab(tabId) {
             });
         }
 
-        function renderPublicAssetTable() {
+        window.renderPublicAssetTable = function() {
             const search = document.getElementById('public-search').value.toLowerCase();
             const catFilter = document.getElementById('public-filter-category').value;
             const calFilter = document.getElementById('public-filter-calibration').value;
@@ -1079,8 +1170,8 @@ unction switchTab(tabId) {
             tbody.innerHTML = '';
 
             const filtered = assets.filter(a => {
-                const matchSearch = a.name.toLowerCase().includes(search) || 
-                                    a.code.toLowerCase().includes(search) || 
+                const matchSearch = (a.name || '').toLowerCase().includes(search) || 
+                                    (a.code || '').toLowerCase().includes(search) || 
                                     (a.brand && a.brand.toLowerCase().includes(search));
                 const matchCat = (catFilter === 'ALL') || (a.category === catFilter);
                 const calStatus = getCalibrationStatus(a.due_date).status;
@@ -1093,7 +1184,7 @@ unction switchTab(tabId) {
             document.getElementById('public-table-info').textContent = `Menampilkan ${filtered.length} dari ${assets.length} aset`;
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Tidak ada data aset yang cocok dengan filter.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Tidak ada data aset yang cocok.</td></tr>`;
                 return;
             }
 
@@ -1107,9 +1198,16 @@ unction switchTab(tabId) {
                     <td class="p-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold">${a.category}</span><br><span class="text-xs text-slate-500">${a.location}</span></td>
                     <td class="p-4 text-xs">${a.brand || '-'}<br><span class="text-slate-400">${a.serial ? 'SN: '+a.serial : ''}</span></td>
                     <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded ${a.condition==='Baik'?'bg-emerald-50 text-emerald-700':a.condition==='Perbaikan'?'bg-amber-50 text-amber-700':'bg-rose-50 text-rose-700'}">${a.condition}</span></td>
-                    <td class="p-4 text-xs">${a.last_calibrated || '-'}</td>
                     <td class="p-4 font-bold ${cal.status==='EXPIRED'?'text-rose-600':cal.status==='DUE_SOON'?'text-amber-600':'text-emerald-700'}">${a.due_date}</td>
                     <td class="p-4 text-center"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${cal.badgeClass}">${cal.label}</span></td>
+                    <td class="p-4 text-center space-x-1">
+                        <button onclick="openCertificateModal('${a.id}')" title="Cetak Sertifikat" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-file-contract"></i> Sertifikat
+                        </button>
+                        <button onclick="openQRModal('${a.id}')" title="Generate QR Code" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-qrcode"></i> QR Label
+                        </button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1122,8 +1220,7 @@ unction switchTab(tabId) {
             expiredBody.innerHTML = '';
             duesoonBody.innerHTML = '';
 
-            let expiredCount = 0;
-            let dueSoonCount = 0;
+            let expiredCount = 0, dueSoonCount = 0;
 
             assets.forEach(a => {
                 const cal = getCalibrationStatus(a.due_date);
@@ -1139,8 +1236,8 @@ unction switchTab(tabId) {
                         <td class="p-3 font-bold text-rose-700">${a.due_date}</td>
                         <td class="p-3 text-xs font-bold text-rose-600">${Math.abs(cal.days)} Hari Lalu</td>
                         <td class="p-3 text-right">
-                            <button onclick="openCalibrateModal('${a.id}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-sm">
-                                <i class="fa-solid fa-stamp"></i> Update Kalibrasi
+                            <button onclick="openCertificateModal('${a.id}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-sm">
+                                <i class="fa-solid fa-file-contract"></i> Sertifikat Kalibrasi
                             </button>
                         </td>
                     `;
@@ -1156,8 +1253,8 @@ unction switchTab(tabId) {
                         <td class="p-3 font-bold text-amber-700">${a.due_date}</td>
                         <td class="p-3 text-xs font-bold text-amber-600">${cal.days} Hari Lagi</td>
                         <td class="p-3 text-right">
-                            <button onclick="openCalibrateModal('${a.id}')" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-sm">
-                                <i class="fa-solid fa-stamp"></i> Update Kalibrasi
+                            <button onclick="openCertificateModal('${a.id}')" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-sm">
+                                <i class="fa-solid fa-file-contract"></i> Sertifikat Kalibrasi
                             </button>
                         </td>
                     `;
@@ -1166,14 +1263,14 @@ unction switchTab(tabId) {
             });
 
             if (expiredCount === 0) {
-                expiredBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada aset yang lewat jatuh tempo kalibrasi.</td></tr>`;
+                expiredBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada aset yang lewat jatuh tempo.</td></tr>`;
             }
             if (dueSoonCount === 0) {
-                duesoonBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada aset yang mendekati jatuh tempo dalam 30 hari.</td></tr>`;
+                duesoonBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Tidak ada aset mendekati jatuh tempo dalam 30 hari.</td></tr>`;
             }
         }
 
-        function renderAdminAssetTable() {
+        window.renderAdminAssetTable = function() {
             if (!isAdminLoggedIn) return;
 
             const search = document.getElementById('admin-search').value.toLowerCase();
@@ -1181,13 +1278,12 @@ unction switchTab(tabId) {
             tbody.innerHTML = '';
 
             const filtered = assets.filter(a => 
-                a.name.toLowerCase().includes(search) || 
-                a.code.toLowerCase().includes(search) ||
-                a.location.toLowerCase().includes(search)
+                (a.name || '').toLowerCase().includes(search) || 
+                (a.code || '').toLowerCase().includes(search) ||
+                (a.location || '').toLowerCase().includes(search)
             );
 
             filtered.forEach(a => {
-                const cal = getCalibrationStatus(a.due_date);
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
                 tr.innerHTML = `
@@ -1197,10 +1293,12 @@ unction switchTab(tabId) {
                     <td class="p-3 text-xs text-slate-600">${a.location}</td>
                     <td class="p-3 text-xs">${a.condition}</td>
                     <td class="p-3 text-xs font-bold">${a.due_date}</td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${cal.badgeClass}">${cal.label}</span></td>
-                    <td class="p-3 text-right space-x-1">
-                        <button onclick="openCalibrateModal('${a.id}')" title="Catat Kalibrasi" class="px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold">
-                            <i class="fa-solid fa-stamp"></i>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="openCertificateModal('${a.id}')" title="Cetak Sertifikat" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-file-contract"></i>
+                        </button>
+                        <button onclick="openQRModal('${a.id}')" title="QR Label" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold">
+                            <i class="fa-solid fa-qrcode"></i>
                         </button>
                         <button onclick="editAssetModal('${a.id}')" title="Edit Aset" class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg text-xs font-semibold">
                             <i class="fa-solid fa-pen"></i>
@@ -1214,12 +1312,187 @@ unction switchTab(tabId) {
             });
         }
 
-        function openAssetFormModal() {
+        function renderMaintenanceLogsTable() {
+            const tbody = document.getElementById('maintenance-logs-body');
+            tbody.innerHTML = '';
+
+            if (maintenanceLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Belum ada catatan riwayat pemeliharaan.</td></tr>`;
+                return;
+            }
+
+            maintenanceLogs.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            maintenanceLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-4 font-bold text-slate-900">${log.date}</td>
+                    <td class="p-4 font-semibold text-brand-700">${log.asset_code || ''}<br><span class="text-xs text-slate-500 font-normal">${log.asset_name || '-'}</span></td>
+                    <td class="p-4"><span class="px-2 py-0.5 rounded bg-brand-50 text-brand-700 text-xs font-semibold">${log.type}</span></td>
+                    <td class="p-4 text-xs">${log.technician || '-'}</td>
+                    <td class="p-4 text-xs font-bold text-slate-800">${log.cost ? 'Rp ' + Number(log.cost).toLocaleString('id-ID') : '-'}</td>
+                    <td class="p-4 text-xs text-slate-600">${log.notes}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function populateMaintenanceAssetDropdown() {
+            const select = document.getElementById('maint-asset-id');
+            select.innerHTML = '<option value="">-- Pilih Alat / Aset --</option>';
+            assets.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = `${a.code} - ${a.name} (${a.location})`;
+                select.appendChild(opt);
+            });
+        }
+
+        window.openCertificateModal = function(id) {
+            const a = assets.find(item => String(item.id) === String(id));
+            if (!a) return;
+
+            document.getElementById('cert-number').textContent = `No: CERT/RSUD/${new Date().getFullYear()}/${(a.code || '').slice(-3)}`;
+            document.getElementById('cert-asset-name').textContent = a.name;
+            document.getElementById('cert-asset-code').textContent = a.code;
+            document.getElementById('cert-asset-brand').textContent = a.brand || '-';
+            document.getElementById('cert-asset-serial').textContent = a.serial || '-';
+            document.getElementById('cert-asset-location').textContent = a.location;
+            document.getElementById('cert-last-calibrated').textContent = a.last_calibrated || '-';
+            document.getElementById('cert-due-date').textContent = a.due_date;
+
+            const container = document.getElementById('cert-qr-container');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: `CERT:${a.code}:${a.due_date}`,
+                width: 56,
+                height: 56
+            });
+
+            document.getElementById('modal-certificate').classList.remove('hidden');
+        }
+
+        window.closeCertificateModal = function() {
+            document.getElementById('modal-certificate').classList.add('hidden');
+        }
+
+        window.openQRModal = function(id) {
+            const a = assets.find(item => String(item.id) === String(id));
+            if (!a) return;
+
+            document.getElementById('qr-asset-name').textContent = a.name;
+            document.getElementById('qr-asset-code').textContent = a.code;
+            document.getElementById('qr-asset-location').textContent = a.location;
+            document.getElementById('qr-asset-due').textContent = a.due_date;
+
+            const container = document.getElementById('qr-code-element');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: `SIMA-RSUD|${a.code}|${a.name}|DUE:${a.due_date}`,
+                width: 120,
+                height: 120
+            });
+
+            document.getElementById('modal-qr-code').classList.remove('hidden');
+        }
+
+        window.closeQRModal = function() {
+            document.getElementById('modal-qr-code').classList.add('hidden');
+        }
+
+        window.openImportModal = function() {
+            document.getElementById('modal-import-excel').classList.remove('hidden');
+        }
+
+        window.closeImportModal = function() {
+            document.getElementById('modal-import-excel').classList.add('hidden');
+        }
+
+        window.handleExcelFileSelect = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+                    if (json && json.length > 0) {
+                        for (const row of json) {
+                            if (row.code && row.name) {
+                                const newAsset = {
+                                    code: String(row.code).trim(),
+                                    name: String(row.name).trim(),
+                                    category: row.category || 'Medis',
+                                    location: row.location || 'RSUD',
+                                    brand: row.brand || '',
+                                    serial: row.serial || '',
+                                    condition: row.condition || 'Baik',
+                                    due_date: row.due_date || new Date().toISOString().split('T')[0]
+                                };
+                                await saveAssetToCloud(newAsset);
+                            }
+                        }
+                        showToast(`Berhasil mengimpor ${json.length} data aset!`);
+                        closeImportModal();
+                    }
+                } catch (err) {
+                    console.error("Excel parse error:", err);
+                    showToast("Format berkas Excel tidak valid.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        window.downloadExcelTemplate = function() {
+            const template = [
+                { code: "AST-MED-2026-099", name: "ECG Monitor 12 Lead", category: "Medis", location: "Poliklinik Jantung", brand: "GE Healthcare", serial: "SN-909281", condition: "Baik", due_date: "2027-01-15" }
+            ];
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template");
+            XLSX.writeFile(wb, "Template_Import_Aset_RSUD.xlsx");
+        }
+
+        window.openAddMaintenanceModal = function() {
+            populateMaintenanceAssetDropdown();
+            document.getElementById('maint-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-add-maintenance').classList.remove('hidden');
+        }
+
+        window.closeAddMaintenanceModal = function() {
+            document.getElementById('modal-add-maintenance').classList.add('hidden');
+        }
+
+        window.handleMaintenanceSubmit = async function(e) {
+            e.preventDefault();
+            const assetId = document.getElementById('maint-asset-id').value;
+            const asset = assets.find(a => String(a.id) === String(assetId));
+
+            const logData = {
+                asset_id: assetId,
+                asset_code: asset ? asset.code : '',
+                asset_name: asset ? asset.name : '',
+                date: document.getElementById('maint-date').value,
+                type: document.getElementById('maint-type').value,
+                technician: document.getElementById('maint-technician').value.trim(),
+                cost: document.getElementById('maint-cost').value || 0,
+                notes: document.getElementById('maint-notes').value.trim()
+            };
+
+            await addMaintenanceLogToCloud(logData);
+            closeAddMaintenanceModal();
+        }
+
+        window.openAssetFormModal = function() {
             document.getElementById('modal-asset-title').innerHTML = `<i class="fa-solid fa-box text-brand-400"></i> Tambah Data Aset RSUD`;
             document.getElementById('form-asset').reset();
             document.getElementById('asset-id').value = '';
             
-            // Set default date
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('field-last-calibrated').value = today;
             autoCalculateNextCalibration();
@@ -1227,11 +1500,11 @@ unction switchTab(tabId) {
             document.getElementById('modal-asset-form').classList.remove('hidden');
         }
 
-        function closeAssetFormModal() {
+        window.closeAssetFormModal = function() {
             document.getElementById('modal-asset-form').classList.add('hidden');
         }
 
-        function autoCalculateNextCalibration() {
+        window.autoCalculateNextCalibration = function() {
             const lastCal = document.getElementById('field-last-calibrated').value;
             const months = parseInt(document.getElementById('field-interval-months').value) || 12;
 
@@ -1242,11 +1515,11 @@ unction switchTab(tabId) {
             }
         }
 
-        function editAssetModal(id) {
-            const a = assets.find(item => item.id === id);
+        window.editAssetModal = function(id) {
+            const a = assets.find(item => String(item.id) === String(id));
             if (!a) return;
 
-            document.getElementById('modal-asset-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400"></i> Edit Data Aset: ${a.code}`;
+            document.getElementById('modal-asset-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400"></i> Edit Aset: ${a.code}`;
             document.getElementById('asset-id').value = a.id;
             document.getElementById('field-code').value = a.code;
             document.getElementById('field-name').value = a.name;
@@ -1258,17 +1531,15 @@ unction switchTab(tabId) {
             document.getElementById('field-interval-months').value = a.interval_months || 12;
             document.getElementById('field-last-calibrated').value = a.last_calibrated || '';
             document.getElementById('field-due-date').value = a.due_date;
-            document.getElementById('field-notes').value = a.notes || '';
 
             document.getElementById('modal-asset-form').classList.remove('hidden');
         }
 
-        async function handleAssetFormSubmit(e) {
+        window.handleAssetFormSubmit = async function(e) {
             e.preventDefault();
-            const id = document.getElementById('asset-id').value || 'ast_' + Date.now();
+            const id = document.getElementById('asset-id').value || null;
             
-            const newAsset = {
-                id: id,
+            const assetData = {
                 code: document.getElementById('field-code').value.trim(),
                 name: document.getElementById('field-name').value.trim(),
                 category: document.getElementById('field-category').value,
@@ -1278,90 +1549,69 @@ unction switchTab(tabId) {
                 condition: document.getElementById('field-condition').value,
                 interval_months: parseInt(document.getElementById('field-interval-months').value),
                 last_calibrated: document.getElementById('field-last-calibrated').value,
-                due_date: document.getElementById('field-due-date').value,
-                notes: document.getElementById('field-notes').value.trim()
+                due_date: document.getElementById('field-due-date').value
             };
 
-            const existingIdx = assets.findIndex(a => a.id === id);
-            if (existingIdx >= 0) {
-                assets[existingIdx] = newAsset;
-            } else {
-                assets.unshift(newAsset);
-            }
-
-            await syncAssetToDatabase(newAsset);
+            await saveAssetToCloud(assetData, id);
             closeAssetFormModal();
-            renderAllViews();
-            showToast('Data aset berhasil disimpan!');
         }
 
-        async function deleteAssetConfirm(id) {
-            const a = assets.find(item => item.id === id);
+        window.deleteAssetConfirm = async function(id) {
+            const a = assets.find(item => String(item.id) === String(id));
             if (!a) return;
 
             if (confirm(`Apakah Anda yakin ingin menghapus aset "${a.name}" (${a.code})?`)) {
-                await deleteAssetFromDatabase(id);
-                renderAllViews();
-                showToast('Aset telah dihapus dari sistem.', 'info');
+                await deleteAssetFromCloud(id);
             }
         }
 
-        function openCalibrateModal(id) {
-            if (!isAdminLoggedIn) {
-                openLoginModal();
-                return;
-            }
+        window.switchTab = function(tab) {
+            const views = ['dashboard', 'assets', 'notifications', 'maintenance', 'admin'];
+            views.forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const btn = document.getElementById(`tab-btn-${v}`);
+                if (v === tab) {
+                    el.classList.remove('hidden');
+                    btn.classList.add('bg-brand-600', 'text-white');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    el.classList.add('hidden');
+                    btn.classList.remove('bg-brand-600', 'text-white');
+                    btn.classList.add('text-slate-300');
+                }
+            });
 
-            const a = assets.find(item => item.id === id);
-            if (!a) return;
-
-            document.getElementById('calib-asset-id').value = a.id;
-            document.getElementById('calib-asset-name-display').textContent = a.name;
-            document.getElementById('calib-asset-code-display').textContent = `${a.code} - ${a.location}`;
-            
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('calib-date-performed').value = today;
-
-            // Compute default next due
-            const months = a.interval_months || 12;
-            const nextDate = new Date();
-            nextDate.setMonth(nextDate.getMonth() + months);
-            document.getElementById('calib-next-due').value = nextDate.toISOString().split('T')[0];
-
-            document.getElementById('modal-calibrate-action').classList.remove('hidden');
+            if (tab === 'dashboard') renderDashboardCharts();
         }
 
-        function closeCalibrateModal() {
-            document.getElementById('modal-calibrate-action').classList.add('hidden');
+        window.openLoginModal = function() {
+            document.getElementById('modal-login').classList.remove('hidden');
         }
 
-        async function handleCalibrateSubmit(e) {
+        window.closeLoginModal = function() {
+            document.getElementById('modal-login').classList.add('hidden');
+        }
+
+        window.handleLoginSubmit = function(e) {
             e.preventDefault();
-            const id = document.getElementById('calib-asset-id').value;
-            const a = assets.find(item => item.id === id);
-            if (!a) return;
-
-            a.last_calibrated = document.getElementById('calib-date-performed').value;
-            a.due_date = document.getElementById('calib-next-due').value;
-            
-            const tester = document.getElementById('calib-tester').value;
-            const cert = document.getElementById('calib-certificate-no').value;
-            if (tester || cert) {
-                a.notes = `Kalibrasi Terakhir (${a.last_calibrated}): ${tester || 'Internal'} - Sertifikat: ${cert || '-'}`;
+            const pass = document.getElementById('login-password').value;
+            if (pass === 'admin123') {
+                isAdminLoggedIn = true;
+                closeLoginModal();
+                updateAdminUI();
+                renderAdminAssetTable();
+                showToast('Login Admin berhasil!', 'success');
+                switchTab('admin');
+            } else {
+                showToast('Password admin salah!', 'error');
             }
-
-            await syncAssetToDatabase(a);
-            closeCalibrateModal();
-            renderAllViews();
-            showToast(`Sertifikasi kalibrasi untuk ${a.code} berhasil diperbarui!`);
         }
 
-        function checkAdminSession() {
-            const session = sessionStorage.getItem('RSUD_ADMIN_SESSION');
-            if (session === 'true') {
-                isAdminLoggedIn = true;
-            }
+        window.handleLogout = function() {
+            isAdminLoggedIn = false;
             updateAdminUI();
+            showToast('Anda telah logout.', 'info');
+            switchTab('dashboard');
         }
 
         function updateAdminUI() {
@@ -1390,116 +1640,7 @@ unction switchTab(tabId) {
             }
         }
 
-        function openLoginModal() {
-            document.getElementById('modal-login').classList.remove('hidden');
-        }
-
-        function closeLoginModal() {
-            document.getElementById('modal-login').classList.add('hidden');
-        }
-
-        function handleLoginSubmit(e) {
-            e.preventDefault();
-            const pass = document.getElementById('login-password').value;
-            if (pass === 'admin123') {
-                isAdminLoggedIn = true;
-                sessionStorage.setItem('RSUD_ADMIN_SESSION', 'true');
-                closeLoginModal();
-                updateAdminUI();
-                renderAdminAssetTable();
-                showToast('Login Admin berhasil!', 'success');
-                switchTab('admin');
-            } else {
-                showToast('Password admin salah!', 'error');
-            }
-        }
-
-        function handleLogout() {
-            isAdminLoggedIn = false;
-            sessionStorage.removeItem('RSUD_ADMIN_SESSION');
-            updateAdminUI();
-            showToast('Anda telah logout dari mode Admin.', 'info');
-            switchTab('dashboard');
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            const views = ['dashboard', 'assets', 'notifications', 'admin'];
-            
-            views.forEach(v => {
-                const el = document.getElementById(`view-${v}`);
-                const btn = document.getElementById(`tab-btn-${v}`);
-                if (v === tab) {
-                    el.classList.remove('hidden');
-                    btn.classList.add('bg-brand-600', 'text-white');
-                    btn.classList.remove('text-slate-300');
-                } else {
-                    el.classList.add('hidden');
-                    btn.classList.remove('bg-brand-600', 'text-white');
-                    btn.classList.add('text-slate-300');
-                }
-            });
-
-            if (tab === 'dashboard') renderDashboardCharts();
-        }
-
-        function openConfigModal() {
-            document.getElementById('modal-supabase-config').classList.remove('hidden');
-        }
-
-        function closeConfigModal() {
-            document.getElementById('modal-supabase-config').classList.add('hidden');
-        }
-
-        function saveSupabaseConfig() {
-            const url = document.getElementById('cfg-supabase-url').value.trim();
-            const key = document.getElementById('cfg-supabase-key').value.trim();
-
-            if (url && key) {
-                localStorage.setItem('RSUD_SUPABASE_URL', url);
-                localStorage.setItem('RSUD_SUPABASE_KEY', key);
-                initSupabaseFromStorage();
-                loadAssetsData().then(() => {
-                    renderAllViews();
-                    closeConfigModal();
-                    showToast('Koneksi Supabase disimpan!', 'success');
-                });
-            } else {
-                showToast('Harap isi URL & Key Supabase!', 'error');
-            }
-        }
-
-        function resetToLocalDB() {
-            localStorage.removeItem('RSUD_SUPABASE_URL');
-            localStorage.removeItem('RSUD_SUPABASE_KEY');
-            supabaseClient = null;
-            document.getElementById('db-warning-banner').classList.remove('hidden');
-            document.getElementById('footer-db-status').innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> Local Storage`;
-            closeConfigModal();
-            showToast('Menggunakan penyimpanan lokal browser.', 'info');
-        }
-
-        function copySQLSchema() {
-            const sqlText = `CREATE TABLE assets (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  code TEXT UNIQUE NOT NULL,\n  name TEXT NOT NULL,\n  category TEXT NOT NULL,\n  location TEXT NOT NULL,\n  brand TEXT,\n  serial TEXT,\n  condition TEXT DEFAULT 'Baik',\n  interval_months INT DEFAULT 12,\n  last_calibrated DATE,\n  due_date DATE NOT NULL,\n  notes TEXT,\n  created_at TIMESTAMPTZ DEFAULT now()\n);\n\nALTER TABLE assets ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Public Read Access" ON assets FOR SELECT USING (true);\nCREATE POLICY "Public Write Access" ON assets FOR ALL USING (true);`;
-            
-            const el = document.createElement('textarea');
-            el.value = sqlText;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            showToast('Skrip SQL disalin ke clipboard!', 'success');
-        }
-
-        function openGithubHelpModal() {
-            document.getElementById('modal-github-help').classList.remove('hidden');
-        }
-
-        function closeGithubHelpModal() {
-            document.getElementById('modal-github-help').classList.add('hidden');
-        }
-
-        function exportDataCSV() {
+        window.exportDataCSV = function() {
             let csv = 'Kode Aset,Nama Alat,Kategori,Lokasi,Merk,No Seri,Kondisi,Tgl Kalibrasi Terakhir,Jatuh Tempo,Status\n';
             assets.forEach(a => {
                 const cal = getCalibrationStatus(a.due_date);
@@ -1537,36 +1678,11 @@ unction switchTab(tabId) {
                 toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
             }, 3000);
         }
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            initSupabase();
+        });
     </script>
-
-
-    <script> // 1. Inisialisasi Klien Supabase (Pastikan URL dan KEY ini sudah dinamis atau diisi)
-const SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || "https://wzmjdlxnjoyzzvzpmhqj.supabase.co";
-const SUPABASE_KEY = localStorage.getItem('SUPABASE_ANON_KEY') || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6bWpkbHhuam95enp2enBtaHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwMTU2NjgsImV4cCI6MjEwNTU5MTY2OH0.i8LtB72RGso_--VhWNQVpjFr44dHK_pYpRqsuMkCQ4c";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// 2. Jalankan fungsi ini setiap kali halaman selesai dimuat (Page Load)
-document.addEventListener("DOMContentLoaded", async function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Baca parameter dari URL, jika kosong gunakan nilai default
-    const tabAktif = urlParams.get('tab') || 'dashboard';
-    const filterKategori = urlParams.get('kategori') || 'Semua';
-    const filterStatus = urlParams.get('status') || 'Semua';
-
-    // Arahkan visual halaman ke tab dan set nilai dropdown filter sesuai URL
-    switchTab(tabAktif);
-    
-    const kategoriSelect = document.getElementById('filter-kategori'); // Sesuaikan ID elemen di HTML Anda
-    const statusSelect = document.getElementById('filter-status');     // Sesuaikan ID elemen di HTML Anda
-    
-    if(kategoriSelect) kategoriSelect.value = filterKategori;
-    if(statusSelect) statusSelect.value = filterStatus;
-
-    // Tarik data dari Supabase berdasarkan filter dari URL tersebut
-    await muatDataAset(filterKategori, filterStatus);
-});
-        
-</script>
 </body>
 </html>
