@@ -839,6 +839,86 @@
         </div>
     </div>
 
+    
+    <script>
+    // Mendapatkan Kredensial (Bisa diganti secara dinamis)
+    function getAdminCredentials() {
+        const storedUser = localStorage.getItem('sima_admin_username');
+        const storedPass = localStorage.getItem('sima_admin_password');
+        return {
+            username: storedUser || 'admin',
+            password: storedPass || 'admin123'
+        };
+    }
+
+    // Fungsi Pengujian Autentikasi / Login Admin
+    function handleAdminLogin(usernameInput, passwordInput) {
+        const creds = getAdminCredentials();
+        if (usernameInput === creds.username && passwordInput === creds.password) {
+            localStorage.setItem('sima_is_logged_in', 'true');
+            return true;
+        }
+        return false;
+    }
+
+    // Modal Control untuk Ubah Username & Password
+    function openChangeCredentialsModal() {
+        document.getElementById('modal-change-credentials').classList.remove('hidden');
+        document.getElementById('form-change-credentials').reset();
+        const alertBox = document.getElementById('credentials-alert');
+        alertBox.classList.add('hidden');
+    }
+
+    function closeChangeCredentialsModal() {
+        document.getElementById('modal-change-credentials').classList.add('hidden');
+    }
+
+    // Eksekusi Pembaruan Username & Password
+    function handleChangeCredentials(e) {
+        e.preventDefault();
+        const currentPass = document.getElementById('change-current-pass').value;
+        const newUser = document.getElementById('change-new-user').value.trim();
+        const newPass = document.getElementById('change-new-pass').value;
+        const confirmPass = document.getElementById('change-confirm-pass').value;
+        const alertBox = document.getElementById('credentials-alert');
+
+        const currentCreds = getAdminCredentials();
+
+        // Validasi Password Lama
+        if (currentPass !== currentCreds.password) {
+            showAlert(alertBox, 'Password saat ini salah!', 'bg-rose-50 text-rose-700 border-rose-200');
+            return;
+        }
+
+        // Validasi Kesamaan Password Baru
+        if (newPass !== confirmPass) {
+            showAlert(alertBox, 'Konfirmasi password baru tidak cocok!', 'bg-rose-50 text-rose-700 border-rose-200');
+            return;
+        }
+
+        if (newPass.length < 4) {
+            showAlert(alertBox, 'Password baru minimal 4 karakter!', 'bg-amber-50 text-amber-700 border-amber-200');
+            return;
+        }
+
+        // Simpan Ke LocalStorage
+        localStorage.setItem('sima_admin_username', newUser);
+        localStorage.setItem('sima_admin_password', newPass);
+
+        showAlert(alertBox, 'Username & Password berhasil diperbarui!', 'bg-emerald-50 text-emerald-700 border-emerald-200');
+
+        setTimeout(() => {
+            closeChangeCredentialsModal();
+        }, 1200);
+    }
+
+    function showAlert(box, msg, cssClasses) {
+        box.className = `text-xs p-2.5 rounded-lg border ${cssClasses}`;
+        box.textContent = msg;
+        box.classList.remove('hidden');
+    }
+</script>
+
   
     <!-- SUPABASE CLIENT & SCRIPT INTEGRATION -->
     <script>
@@ -1723,85 +1803,6 @@
         });
     </script>
 
-
-    <script>
-    // Mendapatkan Kredensial (Bisa diganti secara dinamis)
-    function getAdminCredentials() {
-        const storedUser = localStorage.getItem('sima_admin_username');
-        const storedPass = localStorage.getItem('sima_admin_password');
-        return {
-            username: storedUser || 'admin',
-            password: storedPass || 'admin123'
-        };
-    }
-
-    // Fungsi Pengujian Autentikasi / Login Admin
-    function handleAdminLogin(usernameInput, passwordInput) {
-        const creds = getAdminCredentials();
-        if (usernameInput === creds.username && passwordInput === creds.password) {
-            localStorage.setItem('sima_is_logged_in', 'true');
-            return true;
-        }
-        return false;
-    }
-
-    // Modal Control untuk Ubah Username & Password
-    function openChangeCredentialsModal() {
-        document.getElementById('modal-change-credentials').classList.remove('hidden');
-        document.getElementById('form-change-credentials').reset();
-        const alertBox = document.getElementById('credentials-alert');
-        alertBox.classList.add('hidden');
-    }
-
-    function closeChangeCredentialsModal() {
-        document.getElementById('modal-change-credentials').classList.add('hidden');
-    }
-
-    // Eksekusi Pembaruan Username & Password
-    function handleChangeCredentials(e) {
-        e.preventDefault();
-        const currentPass = document.getElementById('change-current-pass').value;
-        const newUser = document.getElementById('change-new-user').value.trim();
-        const newPass = document.getElementById('change-new-pass').value;
-        const confirmPass = document.getElementById('change-confirm-pass').value;
-        const alertBox = document.getElementById('credentials-alert');
-
-        const currentCreds = getAdminCredentials();
-
-        // Validasi Password Lama
-        if (currentPass !== currentCreds.password) {
-            showAlert(alertBox, 'Password saat ini salah!', 'bg-rose-50 text-rose-700 border-rose-200');
-            return;
-        }
-
-        // Validasi Kesamaan Password Baru
-        if (newPass !== confirmPass) {
-            showAlert(alertBox, 'Konfirmasi password baru tidak cocok!', 'bg-rose-50 text-rose-700 border-rose-200');
-            return;
-        }
-
-        if (newPass.length < 4) {
-            showAlert(alertBox, 'Password baru minimal 4 karakter!', 'bg-amber-50 text-amber-700 border-amber-200');
-            return;
-        }
-
-        // Simpan Ke LocalStorage
-        localStorage.setItem('sima_admin_username', newUser);
-        localStorage.setItem('sima_admin_password', newPass);
-
-        showAlert(alertBox, 'Username & Password berhasil diperbarui!', 'bg-emerald-50 text-emerald-700 border-emerald-200');
-
-        setTimeout(() => {
-            closeChangeCredentialsModal();
-        }, 1200);
-    }
-
-    function showAlert(box, msg, cssClasses) {
-        box.className = `text-xs p-2.5 rounded-lg border ${cssClasses}`;
-        box.textContent = msg;
-        box.classList.remove('hidden');
-    }
-</script>
 
     
 </body>
