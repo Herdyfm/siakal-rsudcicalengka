@@ -840,62 +840,7 @@
     </div>
     
 
-<script>
-// Mengambil kredensial dari localStorage atau gunakan default jika belum ada
-let adminAuth = JSON.parse(localStorage.getItem('adminAuth')) || {
-    username: "admin.siakal",
-    password: "adminpassword123"
-};
 
-// Fungsi Login
-function handleLoginSubmit(event) {
-    event.preventDefault();
-    const userInput = document.getElementById('login-username').value.trim();
-    const passInput = document.getElementById('login-password').value.trim();
-
-    if (userInput === adminAuth.username && passInput === adminAuth.password) {
-        alert("Login Berhasil!");
-        closeLoginModal();
-    } else {
-        alert("Username atau Password yang Anda masukkan salah!");
-    }
-}
-
-// Fungsi Buka & Tutup Modal Ubah Kredensial
-function openChangeCredentialsModal() {
-    document.getElementById('modal-change-credentials').classList.remove('hidden');
-}
-
-function closeChangeCredentialsModal() {
-    document.getElementById('modal-change-credentials').classList.add('hidden');
-    document.getElementById('change-current-password').value = '';
-    document.getElementById('change-new-username').value = '';
-    document.getElementById('change-new-password').value = '';
-    document.getElementById('change-confirm-password').value = '';
-}
-
-// Fungsi Simpan Perubahan Username & Password
-function handleChangeCredentialsSubmit(event) {
-    event.preventDefault();
-
-    const currentPass = document.getElementById('change-current-password').value;
-    const newUsername = document.getElementById('change-new-username').value.trim();
-    const newPass = document.getElementById('change-new-password').value;
-    const confirmPass = document.getElementById('change-confirm-password').value;
-
-    // 1. Verifikasi Password Saat Ini
-    if (currentPass !== adminAuth.password) {
-        alert("Password saat ini salah! Perubahan dibatalkan.");
-        return;
-    }
-
-    let isUpdated = false;
-
-    // 2. Cek Perubahan Username
-    if (newUsername && newUsername !== adminAuth.username) {
-        adminAuth.username = newUsername;
-        isUpdated = true;
-    }
 
   
     <!-- SUPABASE CLIENT & SCRIPT INTEGRATION -->
