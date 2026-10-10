@@ -874,28 +874,6 @@ function handleLoginSubmit(event) {
 }
 
 // Fungsi modal ubah kredensial
-function closeChangeCredentialsModal() {
-    document.getElementById('modal-change-credentials').classList.add('hidden');
-    document.getElementById('form-change-credentials').reset();
-    showAlert('', false);
-}
-
-function showAlert(message, isSuccess = false) {
-    const alertBox = document.getElementById('credentials-alert');
-    if (!message) {
-        alertBox.classList.add('hidden');
-        return;
-    }
-    alertBox.classList.remove('hidden', 'bg-red-50', 'text-red-600', 'border-red-200', 'bg-emerald-50', 'text-emerald-600', 'border-emerald-200');
-    
-    if (isSuccess) {
-        alertBox.classList.add('bg-emerald-50', 'text-emerald-600', 'border-emerald-200');
-    } else {
-        alertBox.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
-    }
-    alertBox.innerText = message;
-}
-
 window.handleChangeCredentials = function (event) {
     event.preventDefault();
 
