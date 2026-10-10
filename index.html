@@ -896,41 +896,83 @@ function showAlert(message, isSuccess = false) {
     alertBox.innerText = message;
 }
 
-function handleChangeCredentials(event) {
+window.handleChangeCredentials = function (event) {
     event.preventDefault();
 
-    const currentPass = document.getElementById('change-current-pass').value;
-    const newUser = document.getElementById('change-new-user').value.trim();
-    const newPass = document.getElementById('change-new-pass').value;
-    const confirmPass = document.getElementById('change-confirm-pass').value;
+    if (!isAdminLoggedIn) {
+        showToast('Akses ditolak. Silakan login kembali.', 'error');
+        return;
+    }
+
+    const currentPass =
+        document.getElementById('change-current-pass').value;
+
+    const newUser =
+        document.getElementById('change-new-user').value.trim();
+
+    const newPass =
+        document.getElementById('change-new-pass').value;
+
+    const confirmPass =
+        document.getElementById('change-confirm-pass').value;
 
     const account = getAccount();
 
-    // Validasi 1: Cek password saat ini
     if (currentPass !== account.password) {
-        showAlert("Password saat ini salah!", false);
+        showAlert('Password saat ini salah!', false);
         return;
     }
 
-    // Validasi 2: Cek kecocokan password baru
+    if (!newUser) {
+        showAlert('Username baru wajib diisi!', false);
+        return;
+    }
+
+    if (newPass.length < 8) {
+        showAlert(
+            'Password baru minimal 8 karakter!',
+            false
+        );
+        return;
+    }
+
     if (newPass !== confirmPass) {
-        showAlert("Konfirmasi password baru tidak cocok!", false);
+        showAlert(
+            'Konfirmasi password baru tidak cocok!',
+            false
+        );
         return;
     }
 
-    // Simpan ke localStorage
     const newAccount = {
         username: newUser,
         password: newPass
     };
-    localStorage.setItem('siakal_admin_account', JSON.stringify(newAccount));
 
-    showAlert("Username & Password berhasil diperbarui!", true);
+    try {
+        localStorage.setItem(
+            'siakal_admin_account',
+            JSON.stringify(newAccount)
+        );
 
-    setTimeout(() => {
-        closeChangeCredentialsModal();
-    }, 1200);
-}
+        showAlert(
+            'Username dan password berhasil diperbarui!',
+            true
+        );
+
+        document.getElementById('form-change-credentials').reset();
+
+        setTimeout(() => {
+            closeChangeCredentialsModal();
+            showToast('Kredensial berhasil diperbarui.', 'success');
+        }, 1000);
+    } catch (error) {
+        showAlert(
+            'Gagal menyimpan perubahan akun pada browser ini.',
+            false
+        );
+    }
+};
 </script>
 
 
